@@ -17,7 +17,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos en CSS para el encabezado
+# Estilos en CSS para el encabezado compacto
 st.markdown("""
     <div style="background-color:#1F4E79; padding:10px 20px; border-radius:8px; text-align:center; margin-bottom:15px;">
         <h2 style="color:white; margin:0; font-size:20px; font-weight:600;">Procesador Unificado de Asistencia y Análisis de Compensatorios</h2>
@@ -60,6 +60,40 @@ AUSENCIAS_ROJO_SET = {
 }
 AUSENCIAS_AMARILLO_SET = {"P"}
 MESES_ES = {1:"ene",2:"feb",3:"mar",4:"abr",5:"may",6:"jun",7:"jul",8:"ago",9:"sep",10:"oct",11:"nov",12:"dic"}
+
+PERIODOS = {
+    "Marzo":      (pd.Timestamp(2026, 2, 14), pd.Timestamp(2026, 3, 20)),
+    "Abril":      (pd.Timestamp(2026, 3, 21), pd.Timestamp(2026, 4, 17)),
+    "Mayo":       (pd.Timestamp(2026, 4, 18), pd.Timestamp(2026, 5, 15)),
+    "Junio":      (pd.Timestamp(2026, 5, 16), pd.Timestamp(2026, 6, 12)),
+    "Julio":      (pd.Timestamp(2026, 6, 13), pd.Timestamp(2026, 7, 17)),
+    "Agosto":     (pd.Timestamp(2026, 7, 18), pd.Timestamp(2026, 8, 14)),
+    "Septiembre": (pd.Timestamp(2026, 8, 15), pd.Timestamp(2026, 9, 18)),
+    "Octubre":    (pd.Timestamp(2026, 9, 19), pd.Timestamp(2026, 10, 16)),
+    "Noviembre":  (pd.Timestamp(2026, 10, 17), pd.Timestamp(2026, 11, 13)),
+    "Diciembre":  (pd.Timestamp(2026, 11, 14), pd.Timestamp(2026, 12, 31))
+}
+
+MAPA_CONCEPTOS = {
+    "HT Normales":                      "ht normales",
+    "Recargo Nocturno 0.35%":           "recargo nocturno 0.35%",
+    "Recargo Dominical Compensado":     "recargo dominical compensado",
+    "Recargo Dominical No Compensado":  "recargo dominical no compensado",
+    "Horas Extras Diurnas 1.25%":       "horas extras diurnas 1.25%",
+    "Recargo Festivo":                  "recargo festivo",
+    "Hora Extra Diurna Dom/Fest":       "hora extra diurna dom/fest",
+    "Recargo Festivo Adicional":        "recargo festivo adicional",
+}
+
+COLORES_LETRAS = {
+    "A":   {"bg": "FF0000", "fg": "FFFFFF"},
+    "S":   {"bg": "FF0000", "fg": "FFFFFF"},
+    "INC": {"bg": "FF0000", "fg": "FFFFFF"},
+    "C":   {"bg": "F4B942", "fg": "000000"},
+    "P":   {"bg": "C00000", "fg": "FFFFFF"},
+    "LIC": {"bg": "FFC000", "fg": "000000"},
+    "DIA": {"bg": "92D050", "fg": "000000"},
+}
 
 def hhmm_a_decimal(texto):
     if pd.isna(texto): return None
@@ -108,21 +142,16 @@ def limpiar_id_a_texto(serie):
 # ── Paso 1: Carga de Archivos ─────────────────────────────────────────────
 st.header("📁 1. Carga de Archivos Base")
 
-# Creamos dos columnas para que los cargadores queden ordenados uno al lado del otro
 col_file1, col_file2 = st.columns(2)
-
 with col_file1:
     archivo_cargado = st.file_uploader("Subir plantilla de Asistencia (.xlsx)", type=["xlsx"])
-
 with col_file2:
     archivo_htcc = st.file_uploader("Subir plantilla de Consolidación HTCC (.xlsx)", type=["xlsx"])
 
 if archivo_cargado is not None and archivo_htcc is not None:
-    # Leer las hojas disponibles dinámicamente de la plantilla de asistencia
     xl = pd.ExcelFile(archivo_cargado)
     hojas_disponibles = xl.sheet_names
     
-    # Leer las hojas disponibles dinámicamente de la plantilla HTCC
     xl_htcc = pd.ExcelFile(archivo_htcc)
     hojas_htcc = xl_htcc.sheet_names
     
@@ -136,24 +165,22 @@ if archivo_cargado is not None and archivo_htcc is not None:
     st.header("📅 2. Parámetros de Filtrado y Fechas")
     fecha_inicio_input = st.date_input("Fecha Inicial de Semanas para Análisis de Compensatorios")
     
-    # Inicializar las variables en el estado de la sesión si no existen
     if "procesado" not in st.session_state:
         st.session_state.procesado = False
         st.session_state.output_bytes = None
+        st.session_state.htcc_bytes = None
         st.session_state.listado = None
         st.session_state.resumen = None
         st.session_state.df_c = None
         st.session_state.resultados_c = None
 
-    # El botón ahora solo activa el procesamiento inicial una vez
     if st.button("🚀 Procesar Reporte e Historial", type="primary"):
-        with st.spinner("Procesando datos y estructurando el archivo Excel..."):
+        with st.spinner("Procesando datos y estructurando archivos de Excel..."):
             try:
-                # Carga de datos
+                # Carga de datos origen
                 df_origen = pd.read_excel(archivo_cargado, sheet_name=HOJA_ENTRADA)
                 df = df_origen.copy()
                 
-                # Mapeo y detección de columnas
                 col_map = {str(c).strip().lower(): c for c in df.columns}
                 def buscar_col(patrones):
                     for pat in patrones:
@@ -179,10 +206,9 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 criticas = {'Identificador':col_id,'Fecha':col_fecha,'Dia':col_dia,'HT':col_ht,'Ausentismo':col_ausent}
                 faltantes = [k for k,v in criticas.items() if v is None]
                 if faltantes:
-                    st.error(f"❌ Columnas críticas no detectadas en la hoja elegida: {faltantes}. Por favor revise los encabezados de su archivo.")
+                    st.error(f"❌ Columnas críticas no detectadas en la hoja elegida: {faltantes}.")
                     st.stop()
 
-                # Procesamiento de Fechas
                 df['FechaReal'] = pd.to_datetime(df[col_fecha], errors='coerce')
                 df['FechaCorta'] = df['FechaReal'].apply(lambda d: f"{d.day}-{MESES_ES[d.month]}" if pd.notna(d) else 'sin-fecha')
                 
@@ -197,7 +223,6 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 df['dia']      = df[col_dia].apply(limpiar_dia)
                 df['_festivo'] = df[col_dia].apply(lambda x: 'festivo' in str(x).strip().lower())
 
-                # Construcción de Conceptos
                 aus = df[col_ausent]
                 df['_HTn']    = [celda(hhmm_a_decimal(h), a) for h, a in zip(df[col_ht], aus)]
                 df['_RNn']    = [celda(num_limpio(v), a) for v, a in zip(df[col_rno], aus)]
@@ -218,20 +243,18 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 ORDEN_CONCEPTOS = {v: i+1 for i, v in enumerate(ETIQUETAS.values())}
                 COLS_FIJAS = [c for c in [col_id, 'FechaReal', 'FechaCorta', 'dia', '_festivo'] if c in df.columns]
 
-                # Unpivot
                 unpivoted = df[COLS_FIJAS + CONCEPTOS_COLS].melt(id_vars=COLS_FIJAS, value_vars=CONCEPTOS_COLS, var_name='_col', value_name='_valor').reset_index(drop=True)
                 unpivoted = unpivoted[~(unpivoted['_valor'].isna() & (unpivoted['_col'] != '_HTn'))].reset_index(drop=True)
                 unpivoted['Concepto'] = unpivoted['_col'].map(ETIQUETAS)
                 unpivoted['_Orden']   = unpivoted['Concepto'].map(ORDEN_CONCEPTOS).fillna(10).astype(int)
                 unpivoted = unpivoted.drop(columns='_col').sort_values([col_id, '_Orden', 'FechaReal']).reset_index(drop=True)
 
-            # Fechas únicas
+                # Corrección del mapa_festivo
                 mapa_fechas = unpivoted[['FechaReal', 'FechaCorta', 'dia', '_festivo']].drop_duplicates(subset=['FechaCorta']).dropna(subset=['FechaReal']).sort_values('FechaReal')
                 fechas_unicas  = mapa_fechas['FechaCorta'].tolist()
                 mapa_dia       = dict(zip(mapa_fechas['FechaCorta'], mapa_fechas['dia']))
                 mapa_festivo   = dict(zip(mapa_fechas['FechaCorta'], mapa_fechas['_festivo']))
 
-                # Pivot por fecha
                 pivotados = []
                 for nombre in ETIQUETAS.values():
                     sub = unpivoted[unpivoted['Concepto'] == nombre].sort_values('FechaReal').drop_duplicates(subset=[col_id, 'FechaCorta'], keep='first')
@@ -246,7 +269,6 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 cols_fecha_ok = [f for f in fechas_unicas if f in pivotado.columns]
                 pivotado = pivotado[[c for c in pivotado.columns if c not in fechas_unicas] + cols_fecha_ok].fillna(0)
 
-                # Agregar nombres
                 if 'Nombre' not in df_origen.columns:
                     df_origen['Nombre'] = df_origen['Nombres'].astype(str).str.strip() + " " + df_origen['Apellidos'].astype(str).str.strip()
                 mapa_nombres = df_origen[[col_id, 'Nombre']].drop_duplicates(subset=[col_id]).copy()
@@ -266,13 +288,12 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 final['Identificador'] = final['Identificador'].astype(str)
                 final[date_cols] = final[date_cols].fillna('')
 
-                # Guardado a memoria buffer para openpyxl
+                # Construcción Excel Reporte Horizontal
                 output_buffer = io.BytesIO()
                 wb = Workbook()
                 ws = wb.active
                 ws.title = 'Reporte_Horizontal'
 
-                # Definición de Colores estables
                 C_NAVY, C_ROJO, C_VRD_DOM, C_VRD_FES, C_VRD_HDR, C_FES_HDR, C_GRIS, C_NARANJA, C_RDC, C_HE, C_AMBAR, C_AMARILLO = '1F4E79', 'FF0000', 'C6EFCE', '92D050', '538135', '375623', 'D9D9D9', 'FF8C00', 'FFCCCC', 'BDD7EE', 'F4B942', 'FFEB9C'
                 thin = Side(style='thin', color='CCCCCC')
                 brd  = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -356,6 +377,146 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 
                 output_buffer = io.BytesIO()
                 wb2.save(output_buffer)
+
+                # ── Módulo de Consolidación Multi-Periodo HTCC ──────────────────
+                output_buffer.seek(0)
+                df_rep = pd.read_excel(output_buffer, sheet_name='Reporte_Horizontal')
+                COLS_FIJAS_REP = ["Identificador", "Concepto"]
+                cols_fecha_rep = [c for c in df_rep.columns if c not in COLS_FIJAS_REP]
+                
+                df_long = df_rep.melt(id_vars=COLS_FIJAS_REP, value_vars=cols_fecha_rep, var_name="FechaCorta", value_name="Valor")
+                
+                def fecha_corta_a_dt(texto):
+                    meses_inv = {v: k for k, v in MESES_ES.items()}
+                    try:
+                        partes = str(texto).split("-")
+                        return pd.Timestamp(2026, meses_inv[partes[1].lower()], int(partes[0]))
+                    except: return pd.NaT
+
+                df_long["FechaReal"] = df_long["FechaCorta"].apply(fecha_corta_a_dt)
+                df_long = df_long.dropna(subset=["FechaReal"])
+                df_long = df_long[df_long["Valor"].notna() & df_long["Valor"].astype(str).str.strip().ne("") & df_long["Valor"].astype(str).str.strip().ne("nan")]
+                df_long["Identificador"] = df_long["Identificador"].apply(limpiar_id_a_texto)
+
+                def asignar_periodo(fecha):
+                    for per, (inicio, fin) in PERIODOS.items():
+                        if inicio <= fecha <= fin: return per
+                    return None
+
+                df_long["Periodo"] = df_long["FechaReal"].apply(asignar_periodo)
+                df_long = df_long[df_long["Periodo"].notna()]
+
+                archivo_htcc.seek(0)
+                wb_htcc = load_workbook(archivo_htcc)
+                ws_htcc = wb_htcc[HOJA_LIBRO3]
+                
+                FILA_ENCABEZADO = 4
+                COL_INICIO_FECHAS = 12
+
+                col_periodo_libro3 = col_id_libro3 = col_concepto_libro3 = None
+                for cell in ws_htcc[FILA_ENCABEZADO]:
+                    if cell.value is None: continue
+                    val = str(cell.value).strip().lower()
+                    if val == "periodo": col_periodo_libro3 = cell.column
+                    if "identificador" in val: col_id_libro3 = cell.column
+                    if "nombre concepto" in val: col_concepto_libro3 = cell.column
+
+                col_fecha_libro3 = {}
+                max_col_fecha = COL_INICIO_FECHAS
+                for col_idx in range(COL_INICIO_FECHAS, ws_htcc.max_column + 1):
+                    val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_idx).value
+                    if val is None: continue
+                    try:
+                        fecha = pd.Timestamp(val).normalize()
+                        col_fecha_libro3[fecha] = col_idx
+                        if col_idx > max_col_fecha: max_col_fecha = col_idx
+                    except: pass
+
+                COL_TOTAL_IDX = max_col_fecha + 1
+                COL_DIF_IDX = COL_TOTAL_IDX + 1
+
+                indice_filas = {}
+                for row in ws_htcc.iter_rows(min_row=FILA_ENCABEZADO + 1):
+                    periodo_val = id_val = conc_val = None
+                    fila_num = row[0].row
+                    for cell in row:
+                        if cell.column == col_periodo_libro3: periodo_val = str(cell.value).strip().upper() if cell.value else None
+                        if cell.column == col_id_libro3: id_val = limpiar_id_a_texto(cell.value)
+                        if cell.column == col_concepto_libro3: conc_val = str(cell.value).strip().lower() if cell.value else None
+                    if periodo_val and id_val and conc_val and id_val not in ("None", "nan", ""):
+                        indice_filas[(periodo_val, id_val, conc_val)] = fila_num
+
+                for _, fila_long in df_long.iterrows():
+                    id_str = fila_long["Identificador"]
+                    concepto_long = str(fila_long["Concepto"]).strip()
+                    fecha_real_long = fila_long["FechaReal"].normalize()
+                    valor_raw = fila_long["Valor"]
+                    periodo_long = str(fila_long["Periodo"]).strip().upper()
+
+                    concepto_libro3 = MAPA_CONCEPTOS.get(concepto_long)
+                    if concepto_libro3 is None: continue
+
+                    clave = (periodo_long, id_str, concepto_libro3)
+                    fila_excel = indice_filas.get(clave)
+                    if fila_excel is None: continue
+
+                    col_excel = col_fecha_libro3.get(fecha_real_long)
+                    if col_excel is None: continue
+
+                    try:
+                        valor_final = round(float(str(valor_raw)), 2)
+                        es_numero = True
+                    except:
+                        valor_final = str(valor_raw).strip().upper()
+                        es_numero = False
+
+                    cell = ws_htcc.cell(row=fila_excel, column=col_excel, value=valor_final)
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                    if es_numero:
+                        cell.number_format = '#,##0.00'
+                        cell.font = Font(name="Arial", size=9)
+                        cell.fill = PatternFill(fill_type="solid", fgColor="FFFFFF")
+                    else:
+                        colores = COLORES_LETRAS.get(valor_final, {"bg":"FFFFFF","fg":"000000"})
+                        cell.font = Font(name="Arial", size=9, bold=True, color=colores["fg"])
+                        cell.fill = PatternFill(fill_type="solid", fgColor=colores["bg"])
+
+                cols_por_periodo = {p.upper(): [] for p in PERIODOS}
+                for f_dt, c_idx in col_fecha_libro3.items():
+                    for per, (inicio, fin) in PERIODOS.items():
+                        if inicio.normalize() <= f_dt <= fin.normalize():
+                            cols_por_periodo[per.upper()].append(c_idx)
+                            break
+
+                ws_htcc.cell(row=FILA_ENCABEZADO, column=COL_TOTAL_IDX, value="Total").font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                ws_htcc.cell(row=FILA_ENCABEZADO, column=COL_TOTAL_IDX).fill = PatternFill(fill_type="solid", fgColor="000000")
+                ws_htcc.cell(row=FILA_ENCABEZADO, column=COL_TOTAL_IDX).alignment = Alignment(horizontal="center", vertical="center")
+
+                ws_htcc.cell(row=FILA_ENCABEZADO, column=COL_DIF_IDX, value="Diferencia").font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                ws_htcc.cell(row=FILA_ENCABEZADO, column=COL_DIF_IDX).fill = PatternFill(fill_type="solid", fgColor="000000")
+                ws_htcc.cell(row=FILA_ENCABEZADO, column=COL_DIF_IDX).alignment = Alignment(horizontal="center", vertical="center")
+
+                for (periodo, id_str, conc_libro3), fila_excel in indice_filas.items():
+                    cols_periodo = cols_por_periodo.get(periodo, [])
+                    if not cols_periodo: continue
+                    col_ini = get_column_letter(min(cols_periodo))
+                    col_fin = get_column_letter(max(cols_periodo))
+                    
+                    formula_total = f"=SUM({col_ini}{fila_excel}:{col_fin}{fila_excel})"
+                    color_fondo = "FFFFFF"
+                    if conc_libro3 == "recargo nocturno 0.35%": color_fondo = "F2F2F2"
+                    elif conc_libro3 == "recargo dominical compensado": color_fondo = "E2EFDA"
+                    elif conc_libro3 == "recargo festivo": color_fondo = "FFF2CC"
+
+                    c_total = ws_htcc.cell(row=fila_excel, column=COL_TOTAL_IDX, value=formula_total)
+                    c_total.number_format, c_total.font, c_total.alignment, c_total.fill = '#,##0.00', Font(name="Arial", size=9, bold=True), Alignment(horizontal="center", vertical="center"), PatternFill(fill_type="solid", fgColor=color_fondo)
+
+                    formula_dif = f"=ROUND({get_column_letter(7)}{fila_excel}-{get_column_letter(COL_TOTAL_IDX)}{fila_excel},0)"
+                    c_dif = ws_htcc.cell(row=fila_excel, column=COL_DIF_IDX, value=formula_dif)
+                    c_dif.number_format, c_dif.font, c_dif.alignment, c_dif.fill = '#,##0.00', Font(name="Arial", size=9, bold=True), Alignment(horizontal="center", vertical="center"), PatternFill(fill_type="solid", fgColor="FFFFFF")
+
+                htcc_buffer = io.BytesIO()
+                wb_htcc.save(htcc_buffer)
 
                 # ── Hoja Análisis C ───────────────────────────────────────────────
                 fecha_inicio_sem = pd.Timestamp(fecha_inicio_input)
@@ -476,8 +637,8 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 output_buffer = io.BytesIO()
                 wb_c.save(output_buffer)
                 
-                # Guardar todo en la sesión para persistencia permanente
                 st.session_state.output_bytes = output_buffer.getvalue()
+                st.session_state.htcc_bytes = htcc_buffer.getvalue()
                 st.session_state.listado = listado
                 st.session_state.resumen = resumen
                 st.session_state.df_c = df_c
@@ -488,16 +649,24 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 st.error(f"❌ Ocurrió un error inesperado al procesar: {e}")
 
     # ── BLOQUE DE RENDERIZADO VISUAL FUERA DEL BOTÓN ──────────────────────────
-    # Si ya se procesó con éxito una vez, se mantiene visible de forma persistente
     if st.session_state.procesado:
-        st.success("🎉 ¡Reporte procesado exitosamente!")
+        st.success("🎉 ¡Reporte y Consolidación Multi-Periodo procesados exitosamente!")
         
-        st.download_button(
-            label="📥 Descargar Reporte Horizontal Procesado",
-            data=st.session_state.output_bytes,
-            file_name="Reporte_Horizontal_Asistencia.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        col_down1, col_down2 = st.columns(2)
+        with col_down1:
+            st.download_button(
+                label="📥 Descargar Reporte Horizontal Procesado",
+                data=st.session_state.output_bytes,
+                file_name="Reporte_Horizontal_Asistencia.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        with col_down2:
+            st.download_button(
+                label="📥 Descargar Plantilla HTCC Consolidada",
+                data=st.session_state.htcc_bytes,
+                file_name="HTCC_Consolidado_2026.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
         st.markdown("---")
         st.header("📋 Vista Previa de Resultados")
@@ -538,7 +707,6 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 if chk_nocumple:
                     estados_activos.append("NO CUMPLE")
                 
-                # Filtrado seguro desde la sesión sin destruir los datos fuente
                 df_c_filtrado = st.session_state.df_c[st.session_state.df_c["Estado"].isin(estados_activos)]
                 st.dataframe(df_c_filtrado, use_container_width=True, hide_index=True)
             else:

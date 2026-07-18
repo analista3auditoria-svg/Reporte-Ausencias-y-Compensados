@@ -135,9 +135,24 @@ def celda(valor, ausent_raw):
     if v is not None: return int(v) if v % 1 == 0 else round(v, 2)
     return a
 
-def limpiar_id_a_texto(serie):
-    temp = pd.to_numeric(serie, errors='coerce')
-    return temp.fillna(0).astype(int).astype(str).replace('0', '')
+def limpiar_id_a_texto(valor):
+    # Si lo que recibe es una columna de Pandas (Series)
+    if isinstance(valor, pd.Series):
+        temp = pd.to_numeric(valor, errors='coerce')
+        return temp.fillna(0).astype(int).astype(str).replace('0', '')
+    
+    # Si lo que recibe es una sola celda/valor suelto (Scalar)
+    if pd.isna(valor): 
+        return ""
+    s = str(valor).strip()
+    if s.lower() in ("nan", "none", "0", ""): 
+        return ""
+    if s.endswith(".0"): 
+        s = s[:-2]
+    try:
+        return str(int(float(s)))
+    except:
+        return s
 
 # ── Paso 1: Carga de Archivos ─────────────────────────────────────────────
 st.header("📁 1. Carga de Archivos Base")

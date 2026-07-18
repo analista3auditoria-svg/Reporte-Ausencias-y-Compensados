@@ -17,7 +17,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS avanzados para limpiar el cuadro negro y dejar el archivo cargado en texto plano
+# Estilos CSS definitivos para ocultar el bloque de metadatos (MB) y el cuadro negro
 st.markdown("""
     <style>
         /* Ajustar el contenedor general del cargador */
@@ -61,28 +61,33 @@ st.markdown("""
             display: none !important;
         }
         
-        /* ── ELIMINAR EL CUADRO NEGRO DE ARCHIVO CARGADO ── */
-        /* Oculta la tarjeta nativa flotante con icono y tamaño en MB */
-        [data-testid="stFileUploaderFileName"] {
+        /* ── ELIMINAR EL RECUADRO OSCURO DE ARCHIVOS CARGADOS ── */
+        /* Oculta el contenedor de la fila de datos que genera el icono oscuro y el texto de los megabytes (MB) */
+        [data-testid="stFileUploaderRow"] {
             background-color: transparent !important;
             border: none !important;
-            padding: 0px !important;
             box-shadow: none !important;
+            padding: 0px !important;
+            margin: 0px !important;
+            display: inline-flex !important;
+            align-items: center !important;
         }
-        /* Oculta específicamente el icono/cuadro oscuro del tipo de archivo y el tamaño */
-        [data-testid="stFileUploaderFileName"] svg,
-        [data-testid="stFileUploaderFileName"] span:last-child {
+        /* Oculta la miniatura oscura y los indicadores de tamaño */
+        [data-testid="stFileUploaderRow"] svg,
+        [data-testid="stFileUploaderRow"] div:has(span) > span:last-child {
             display: none !important;
         }
-        /* Estilo para el texto limpio del nombre del archivo cargado */
-        [data-testid="stFileUploaderFileName"] span:first-child {
+        /* Estilo para el nombre del archivo en texto plano */
+        [data-testid="stFileUploaderRow"] span {
             font-family: Arial, sans-serif !important;
             font-size: 14px !important;
-            color: #004B87 !important; /* Color azul clásico de enlace */
-            text-decoration: none !important;
+            color: #333333 !important;
+            font-weight: normal !important;
         }
     </style>
 """, unsafe_allow_html=True)
+
+
 # ── Configuración Inicial Interna ─────────────────────────────────────────
 MAPA_ausencias = {
     "ninguno":                   None,

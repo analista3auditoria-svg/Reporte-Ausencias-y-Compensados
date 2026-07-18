@@ -492,24 +492,32 @@ if archivo_cargado is not None:
                     st.subheader("Resumen Consolidado por Persona")
                     st.dataframe(resumen, use_container_width=True, hide_index=True)
                     
-                with tab_comp:
+               with tab_comp:
                     st.subheader("Validación de Compensatorios (Analisis C)")
                     if resultados_c:
-                        # ── FILTRO INTERACTIVO DE ESTADO ───────────────────────
-                        # Extrae las opciones únicas disponibles en la columna Estado
-                        opciones_estados = df_c["Estado"].unique().tolist()
+                        # ── CASILLAS DE SELECCIÓN INDIVIDUALES ──────────────────
+                        st.write("Filtrar por Estado:")
                         
-                        # Crea la barra de selección múltiple (por defecto muestra todos)
-                        estados_seleccionados = st.multiselect(
-                            "Filtrar por Estado:",
-                            options=opciones_estados,
-                            default=opciones_estados
-                        )
+                        # Creamos dos columnas pequeñas para poner las casillas alineadas
+                        col_cumple, col_nocumple, _ = st.columns([1, 1, 3])
                         
-                        # Filtra el DataFrame basándose en la selección del usuario
-                        df_c_filtrado = df_c[df_c["Estado"].isin(estados_seleccionados)]
+                        with col_cumple:
+                            chk_cumple = st.checkbox("CUMPLE", value=True)
+                            
+                        with col_nocumple:
+                            chk_nocumple = st.checkbox("NO CUMPLE", value=True)
                         
-                        # Muestra la tabla filtrada en pantalla
+                        # Construimos la lista de estados activos según las casillas marcadas
+                        estados_activos = []
+                        if chk_cumple:
+                            estados_activos.append("CUMPLE")
+                        if chk_nocumple:
+                            estados_activos.append("NO CUMPLE")
+                        
+                        # Filtramos la tabla basándonos en las casillas seleccionadas
+                        df_c_filtrado = df_c[df_c["Estado"].isin(estados_activos)]
+                        
+                        # Muestra la tabla resultante
                         st.dataframe(df_c_filtrado, use_container_width=True, hide_index=True)
                     else:
                         st.info("No se encontraron registros de compensatorios que requieran validación para el periodo seleccionado.")

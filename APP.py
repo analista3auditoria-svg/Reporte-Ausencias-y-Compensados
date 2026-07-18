@@ -20,7 +20,7 @@ st.set_page_config(
 # Estilos CSS definitivos para forzar el diseño plano sin cuadros de fondo al cargar
 st.markdown("""
     <div style="background-color:#1F4E79; padding:10px 20px; border-radius:8px; text-align:center; margin-bottom:15px;">
-        <h2 style="color:white; margin:0; font-size:20px; font-weight:600;">Procesador Unificado de Asistencia y Análisis de Compensatorios</h2>
+        <h2 style="color:white; margin:0; font-size:20px; font-weight:600;">SaberBot Auditoría de Trabajo Suplementario</h2>
     </div>
     <style>
         /* Ajustar el contenedor general del cargador */

@@ -471,53 +471,37 @@ if archivo_cargado is not None:
                 ])
 
                 with tab_aus:
-                    # Creamos dos columnas para colocar el título y la métrica de cantidad alineados
                     col_titulo, col_metrica = st.columns([3, 1])
-                    
                     with col_titulo:
                         st.subheader("Registros Detallados de Ausencias")
-                        
                     with col_metrica:
-                        # Calcula dinámicamente cuántas filas tiene la tabla de ausencias
                         total_ausencias = len(listado)
-                        # Coloca un contador llamativo alineado a la derecha
                         st.markdown(f"""
                             <div style="background-color:#FFEB9C; padding:5px 15px; border-radius:15px; text-align:center; border:1px solid #FFC7CE; margin-top:5px;">
                                 <strong style="color:#9C0006; font-size:16px;">Total: {total_ausencias}</strong>
                             </div>
                         """, unsafe_allow_html=True)
-                    
                     st.dataframe(listado, use_container_width=True, hide_index=True)
-                    
                     st.subheader("Resumen Consolidado por Persona")
                     st.dataframe(resumen, use_container_width=True, hide_index=True)
                     
-               with tab_comp:
+                with tab_comp:
                     st.subheader("Validación de Compensatorios (Analisis C)")
                     if resultados_c:
-                        # ── CASILLAS DE SELECCIÓN INDIVIDUALES ──────────────────
                         st.write("Filtrar por Estado:")
-                        
-                        # Creamos dos columnas pequeñas para poner las casillas alineadas
                         col_cumple, col_nocumple, _ = st.columns([1, 1, 3])
-                        
                         with col_cumple:
                             chk_cumple = st.checkbox("CUMPLE", value=True)
-                            
                         with col_nocumple:
                             chk_nocumple = st.checkbox("NO CUMPLE", value=True)
                         
-                        # Construimos la lista de estados activos según las casillas marcadas
                         estados_activos = []
                         if chk_cumple:
                             estados_activos.append("CUMPLE")
                         if chk_nocumple:
                             estados_activos.append("NO CUMPLE")
                         
-                        # Filtramos la tabla basándonos en las casillas seleccionadas
                         df_c_filtrado = df_c[df_c["Estado"].isin(estados_activos)]
-                        
-                        # Muestra la tabla resultante
                         st.dataframe(df_c_filtrado, use_container_width=True, hide_index=True)
                     else:
                         st.info("No se encontraron registros de compensatorios que requieran validación para el periodo seleccionado.")

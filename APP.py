@@ -83,7 +83,6 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
-
 # ── Configuración Inicial Interna ─────────────────────────────────────────
 MAPA_ausencias = {
     "ninguno":                   None,

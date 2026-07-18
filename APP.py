@@ -450,7 +450,7 @@ if archivo_cargado is not None:
                 output_buffer = io.BytesIO()
                 wb_c.save(output_buffer)
                 
-             # Éxito y entrega de descarga
+            # Éxito y entrega de descarga
                 st.success("🎉 ¡Reporte procesado exitosamente!")
                 
                 st.download_button(
@@ -464,16 +464,11 @@ if archivo_cargado is not None:
                 st.markdown("---")
                 st.header("📋 Vista Previa de Resultados")
                 
-                # Tres pestañas para albergar todos los análisis del Excel
-                tab_horiz, tab_aus, tab_comp = st.tabs([
-                    "📊 Reporte Horizontal", 
+                # Configuración exclusiva para dos pestañas
+                tab_aus, tab_comp = st.tabs([
                     "📄 Hoja de Ausencias", 
                     "🔍 Análisis de Compensatorios"
                 ])
-                
-                with tab_horiz:
-                    st.subheader("Malla Horaria General")
-                    st.dataframe(final, use_container_width=True, hide_index=True)
 
                 with tab_aus:
                     st.subheader("Registros Detallados de Ausencias")
@@ -484,12 +479,10 @@ if archivo_cargado is not None:
                 with tab_comp:
                     st.subheader("Validación de Compensatorios (Analisis C)")
                     if resultados_c:
-                        # Convertimos el diccionario a DataFrame para mostrarlo si tiene datos
                         st.dataframe(df_c, use_container_width=True, hide_index=True)
                     else:
                         st.info("No se encontraron registros de compensatorios que requieran validación para el periodo seleccionado.")
 
             except Exception as e:
                 st.error(f"❌ Ocurrió un error inesperado al procesar: {e}")
-
           

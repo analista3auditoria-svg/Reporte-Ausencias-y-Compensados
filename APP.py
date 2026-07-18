@@ -106,15 +106,31 @@ def limpiar_id_a_texto(serie):
     return temp.fillna(0).astype(int).astype(str).replace('0', '')
 
 # ── Paso 1: Carga de Archivos ─────────────────────────────────────────────
-st.header("📁 1. Carga de Archivo Base")
-archivo_cargado = st.file_uploader("Subir plantilla de Asistencia (.xlsx)", type=["xlsx"])
+st.header("📁 1. Carga de Archivos Base")
 
-if archivo_cargado is not None:
-    # Leer las hojas disponibles dinámicamente
+# Creamos dos columnas para que los cargadores queden ordenados uno al lado del otro
+col_file1, col_file2 = st.columns(2)
+
+with col_file1:
+    archivo_cargado = st.file_uploader("Subir plantilla de Asistencia (.xlsx)", type=["xlsx"])
+
+with col_file2:
+    archivo_htcc = st.file_uploader("Subir plantilla de Consolidación HTCC (.xlsx)", type=["xlsx"])
+
+if archivo_cargado is not None and archivo_htcc is not None:
+    # Leer las hojas disponibles dinámicamente de la plantilla de asistencia
     xl = pd.ExcelFile(archivo_cargado)
     hojas_disponibles = xl.sheet_names
     
-    HOJA_ENTRADA = st.selectbox("Seleccione la hoja de marcación:", hojas_disponibles)
+    # Leer las hojas disponibles dinámicamente de la plantilla HTCC
+    xl_htcc = pd.ExcelFile(archivo_htcc)
+    hojas_htcc = xl_htcc.sheet_names
+    
+    col_sheet1, col_sheet2 = st.columns(2)
+    with col_sheet1:
+        HOJA_ENTRADA = st.selectbox("Seleccione la hoja de marcación:", hojas_disponibles)
+    with col_sheet2:
+        HOJA_LIBRO3 = st.selectbox("Seleccione la hoja de destino en HTCC:", hojas_htcc)
     
     # ── Paso 2: Parámetros de Fechas ─────────────────────────────────────────
     st.header("📅 2. Parámetros de Filtrado y Fechas")

@@ -495,7 +495,22 @@ if archivo_cargado is not None:
                 with tab_comp:
                     st.subheader("Validación de Compensatorios (Analisis C)")
                     if resultados_c:
-                        st.dataframe(df_c, use_container_width=True, hide_index=True)
+                        # ── FILTRO INTERACTIVO DE ESTADO ───────────────────────
+                        # Extrae las opciones únicas disponibles en la columna Estado
+                        opciones_estados = df_c["Estado"].unique().tolist()
+                        
+                        # Crea la barra de selección múltiple (por defecto muestra todos)
+                        estados_seleccionados = st.multiselect(
+                            "Filtrar por Estado:",
+                            options=opciones_estados,
+                            default=opciones_estados
+                        )
+                        
+                        # Filtra el DataFrame basándose en la selección del usuario
+                        df_c_filtrado = df_c[df_c["Estado"].isin(estados_seleccionados)]
+                        
+                        # Muestra la tabla filtrada en pantalla
+                        st.dataframe(df_c_filtrado, use_container_width=True, hide_index=True)
                     else:
                         st.info("No se encontraron registros de compensatorios que requieran validación para el periodo seleccionado.")
 

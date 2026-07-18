@@ -471,8 +471,24 @@ if archivo_cargado is not None:
                 ])
 
                 with tab_aus:
-                    st.subheader("Registros Detallados de Ausencias")
+                    # Creamos dos columnas para colocar el título y la métrica de cantidad alineados
+                    col_titulo, col_metrica = st.columns([3, 1])
+                    
+                    with col_titulo:
+                        st.subheader("Registros Detallados de Ausencias")
+                        
+                    with col_metrica:
+                        # Calcula dinámicamente cuántas filas tiene la tabla de ausencias
+                        total_ausencias = len(listado)
+                        # Coloca un contador llamativo alineado a la derecha
+                        st.markdown(f"""
+                            <div style="background-color:#FFEB9C; padding:5px 15px; border-radius:15px; text-align:center; border:1px solid #FFC7CE; margin-top:5px;">
+                                <strong style="color:#9C0006; font-size:16px;">Total: {total_ausencias}</strong>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    
                     st.dataframe(listado, use_container_width=True, hide_index=True)
+                    
                     st.subheader("Resumen Consolidado por Persona")
                     st.dataframe(resumen, use_container_width=True, hide_index=True)
                     

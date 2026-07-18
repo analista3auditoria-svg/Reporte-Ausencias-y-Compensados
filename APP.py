@@ -120,7 +120,16 @@ if archivo_cargado is not None:
     st.header("📅 2. Parámetros de Filtrado y Fechas")
     fecha_inicio_input = st.date_input("Fecha Inicial de Semanas para Análisis de Compensatorios")
     
-    # Botón para ejecutar el procesamiento
+    # Inicializar las variables en el estado de la sesión si no existen
+    if "procesado" not in st.session_state:
+        st.session_state.procesado = False
+        st.session_state.output_bytes = None
+        st.session_state.listado = None
+        st.session_state.resumen = None
+        st.session_state.df_c = None
+        st.session_state.resultados_c = None
+
+    # El botón ahora solo activa el procesamiento inicial una vez
     if st.button("🚀 Procesar Reporte e Historial", type="primary"):
         with st.spinner("Procesando datos y estructurando el archivo Excel..."):
             try:
@@ -204,7 +213,7 @@ if archivo_cargado is not None:
                 mapa_fechas = unpivoted[['FechaReal', 'FechaCorta', 'dia', '_festivo']].drop_duplicates(subset=['FechaCorta']).dropna(subset=['FechaReal']).sort_values('FechaReal')
                 fechas_unicas  = mapa_fechas['FechaCorta'].tolist()
                 mapa_dia       = dict(zip(mapa_fechas['FechaCorta'], mapa_fechas['dia']))
-                mapa_festivo   = dict(zip(mapa_fechas['FechaCorta'], mapa_fechas['_festivo']))
+                mapa_festivo   = dict(zip(mapa_fechas['FechaCorta'], mapa_festivo))
 
                 # Pivot por fecha
                 pivotados = []
@@ -408,8 +417,9 @@ if archivo_cargado is not None:
                             for i, f in enumerate(fechas_c_list, 1): fila[f"Fecha {i}"] = f
                             resultados_c.append(fila)
 
-                if resultados_c:
-                    df_c = pd.DataFrame(resultados_c)
+                df_c = pd.DataFrame(resultados_c) if resultados_c else pd.DataFrame()
+
+                if not df_c.empty:
                     ws_out_c = wb_c.create_sheet("Analisis C")
                     headers_base = ["Identificador", "Nombre", "Concepto", "Trabajo Domingo", "Cant. C", "Estado"]
                     headers_fechas = [f"Fecha {i}" for i in range(1, max_fechas_c + 1)]
@@ -450,62 +460,70 @@ if archivo_cargado is not None:
                 output_buffer = io.BytesIO()
                 wb_c.save(output_buffer)
                 
-            # Éxito y entrega de descarga
-                st.success("🎉 ¡Reporte procesado exitosamente!")
-                
-                st.download_button(
-                    label="📥 Descargar Reporte Horizontal Procesado",
-                    data=output_buffer.getvalue(),
-                    file_name="Reporte_Horizontal_Asistencia.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
-                # ── VENTANAS INTERACTIVAS DEL REPORTE ──────────────────────────
-                st.markdown("---")
-                st.header("📋 Vista Previa de Resultados")
-                
-                # Configuración exclusiva para dos pestañas
-                tab_aus, tab_comp = st.tabs([
-                    "📄 Hoja de Ausencias", 
-                    "🔍 Análisis de Compensatorios"
-                ])
-
-                with tab_aus:
-                    col_titulo, col_metrica = st.columns([3, 1])
-                    with col_titulo:
-                        st.subheader("Registros Detallados de Ausencias")
-                    with col_metrica:
-                        total_ausencias = len(listado)
-                        st.markdown(f"""
-                            <div style="background-color:#FFEB9C; padding:5px 15px; border-radius:15px; text-align:center; border:1px solid #FFC7CE; margin-top:5px;">
-                                <strong style="color:#9C0006; font-size:16px;">Total: {total_ausencias}</strong>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    st.dataframe(listado, use_container_width=True, hide_index=True)
-                    st.subheader("Resumen Consolidado por Persona")
-                    st.dataframe(resumen, use_container_width=True, hide_index=True)
-                    
-                with tab_comp:
-                    st.subheader("Validación de Compensatorios (Analisis C)")
-                    if resultados_c:
-                        st.write("Filtrar por Estado:")
-                        col_cumple, col_nocumple, _ = st.columns([1, 1, 3])
-                        with col_cumple:
-                            chk_cumple = st.checkbox("CUMPLE", value=True)
-                        with col_nocumple:
-                            chk_nocumple = st.checkbox("NO CUMPLE", value=True)
-                        
-                        estados_activos = []
-                        if chk_cumple:
-                            estados_activos.append("CUMPLE")
-                        if chk_nocumple:
-                            estados_activos.append("NO CUMPLE")
-                        
-                        df_c_filtrado = df_c[df_c["Estado"].isin(estados_activos)]
-                        st.dataframe(df_c_filtrado, use_container_width=True, hide_index=True)
-                    else:
-                        st.info("No se encontraron registros de compensatorios que requieran validación para el periodo seleccionado.")
+                # Guardar todo en la sesión para persistencia permanente
+                st.session_state.output_bytes = output_buffer.getvalue()
+                st.session_state.listado = listado
+                st.session_state.resumen = resumen
+                st.session_state.df_c = df_c
+                st.session_state.resultados_c = resultados_c
+                st.session_state.procesado = True
 
             except Exception as e:
                 st.error(f"❌ Ocurrió un error inesperado al procesar: {e}")
-          
+
+    # ── BLOQUE DE RENDERIZADO VISUAL FUERA DEL BOTÓN ──────────────────────────
+    # Si ya se procesó con éxito una vez, se mantiene visible de forma persistente
+    if st.session_state.procesado:
+        st.success("🎉 ¡Reporte procesado exitosamente!")
+        
+        st.download_button(
+            label="📥 Descargar Reporte Horizontal Procesado",
+            data=st.session_state.output_bytes,
+            file_name="Reporte_Horizontal_Asistencia.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+        st.markdown("---")
+        st.header("📋 Vista Previa de Resultados")
+        
+        tab_aus, tab_comp = st.tabs([
+            "📄 Hoja de Ausencias", 
+            "🔍 Análisis de Compensatorios"
+        ])
+
+        with tab_aus:
+            col_titulo, col_metrica = st.columns([3, 1])
+            with col_titulo:
+                st.subheader("Registros Detallados de Ausencias")
+            with col_metrica:
+                total_ausencias = len(st.session_state.listado)
+                st.markdown(f"""
+                    <div style="background-color:#FFEB9C; padding:5px 15px; border-radius:15px; text-align:center; border:1px solid #FFC7CE; margin-top:5px;">
+                        <strong style="color:#9C0006; font-size:16px;">Total: {total_ausencias}</strong>
+                    </div>
+                """, unsafe_allow_html=True)
+            st.dataframe(st.session_state.listado, use_container_width=True, hide_index=True)
+            st.subheader("Resumen Consolidado por Persona")
+            st.dataframe(st.session_state.resumen, use_container_width=True, hide_index=True)
+            
+        with tab_comp:
+            st.subheader("Validación de Compensatorios (Analisis C)")
+            if st.session_state.resultados_c:
+                st.write("Filtrar por Estado:")
+                col_cumple, col_nocumple, _ = st.columns([1, 1, 3])
+                with col_cumple:
+                    chk_cumple = st.checkbox("CUMPLE", value=True, key="filtro_cumple")
+                with col_nocumple:
+                    chk_nocumple = st.checkbox("NO CUMPLE", value=True, key="filtro_nocumple")
+                
+                estados_activos = []
+                if chk_cumple:
+                    estados_activos.append("CUMPLE")
+                if chk_nocumple:
+                    estados_activos.append("NO CUMPLE")
+                
+                # Filtrado seguro desde la sesión sin destruir los datos fuente
+                df_c_filtrado = st.session_state.df_c[st.session_state.df_c["Estado"].isin(estados_activos)]
+                st.dataframe(df_c_filtrado, use_container_width=True, hide_index=True)
+            else:
+                st.info("No se encontraron registros de compensatorios que requieran validación para el periodo seleccionado.")

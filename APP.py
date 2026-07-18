@@ -14,7 +14,7 @@ warnings.filterwarnings('ignore')
 st.set_page_config(
     page_title="Malla de Marcaciones GeoVictoria",
     page_icon="📊",
-    layout="centered"
+    layout="wide"
 )
 
 # Estilos en CSS para el encabezado compacto

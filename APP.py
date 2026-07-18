@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 # Configuración de la página
 st.set_page_config(
     page_title="Auditoría de Trabajo Suplementario",
-    page_icon="📊",
+    page_icon="📋",
     layout="wide"
 )
 

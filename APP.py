@@ -19,8 +19,8 @@ st.set_page_config(
 
 # Estilos en CSS para el encabezado
 st.markdown("""
-    <div style="background-color:#1F4E79; padding:25px; border-radius:10px; text-align:center; margin-bottom:25px;">
-        <h1 style="color:white; margin:0; font-size:28px;">Procesador Unificado de Asistencia y Análisis de Compensatorios</h1>
+    <div style="background-color:#1F4E79; padding:10px 20px; border-radius:8px; text-align:center; margin-bottom:15px;">
+        <h2 style="color:white; margin:0; font-size:20px; font-weight:600;">Procesador Unificado de Asistencia y Análisis de Compensatorios</h2>
     </div>
 """, unsafe_allow_html=True)
 

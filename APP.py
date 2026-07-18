@@ -17,11 +17,45 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos en CSS para el encabezado compacto
+# Estilos CSS avanzados para compactar el cargador de archivos (st.file_uploader)
 st.markdown("""
-    <div style="background-color:#1F4E79; padding:10px 20px; border-radius:8px; text-align:center; margin-bottom:15px;">
-        <h2 style="color:white; margin:0; font-size:20px; font-weight:600;">Procesador Unificado de Asistencia y Análisis de Compensatorios</h2>
-    </div>
+    <style>
+        /* Reduce el tamaño del contenedor del cargador de archivos */
+        [data-testid="stFileUploader"] {
+            padding: 0px;
+        }
+        /* Transforma la caja grande de arrastrar en una fila compacta */
+        [data-testid="stFileUploaderDropzone"] {
+            padding: 6px 12px !important;
+            border: 1px dashed #bfc7d2 !important;
+            border-radius: 4px !important;
+            background-color: #f8f9fa !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 10px !important;
+            min-height: 45px !important;
+        }
+        /* Oculta los textos secundarios largos (como "Drag and drop file here") */
+        [data-testid="stFileUploaderDropzone"] section {
+            display: none !important;
+        }
+        /* Oculta las restricciones de tamaño e iconos gigantes */
+        [data-testid="stFileUploaderDropzone"] svg, 
+        [data-testid="stFileUploaderDropzone"] small {
+            display: none !important;
+        }
+        /* Da estilo al botón interno para simular "Seleccionar archivo" */
+        [data-testid="stFileUploaderDropzone"] button {
+            padding: 4px 10px !important;
+            font-size: 13px !important;
+            background-color: #ffffff !important;
+            border: 1px solid #999999 !important;
+            color: #333333 !important;
+            border-radius: 3px !important;
+        }
+    </style>
 """, unsafe_allow_html=True)
 
 # ── Configuración Inicial Interna ─────────────────────────────────────────

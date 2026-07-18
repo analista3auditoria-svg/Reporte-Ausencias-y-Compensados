@@ -20,7 +20,7 @@ st.set_page_config(
 # Estilos en CSS para el encabezado (similares a tu imagen)
 st.markdown("""
     <div style="background-color:#1F4E79; padding:20px; border-radius:10px; text-align:center; margin-bottom:25px;">
-        <h1 style="color:white; margin:0;">MALLA DE MARCACIONES GEOVICTORIA</h1>
+        <h1 style="color:white; margin:0;">Procesador Unificado de Asistencia y Análisis de Compensatorios</h1>
         <p style="color:#D9E1F2; margin:5px 0 0 0;">Procesador Unificado de Asistencia y Análisis de Compensatorios</p>
     </div>
 """, unsafe_allow_html=True)

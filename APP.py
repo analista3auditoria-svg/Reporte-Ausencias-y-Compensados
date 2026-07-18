@@ -23,7 +23,7 @@ st.markdown("""
         <h1 style="color:white; margin:0;">MALLA DE MARCACIONES GEOVICTORIA</h1>
         <p style="color:#D9E1F2; margin:5px 0 0 0;">Procesador Unificado de Asistencia y Análisis de Compensatorios</p>
     </div>
-""", unsafe_transform=True)
+""", unsafe_allow_html=True)
 
 # ── Configuración Inicial Interna ─────────────────────────────────────────
 MAPA_ausencias = {

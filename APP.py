@@ -17,8 +17,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS definitivos para ocultar el bloque de metadatos (MB) y el cuadro negro
+# Estilos CSS definitivos para forzar el diseño plano sin cuadros de fondo al cargar
 st.markdown("""
+    <div style="background-color:#1F4E79; padding:10px 20px; border-radius:8px; text-align:center; margin-bottom:15px;">
+        <h2 style="color:white; margin:0; font-size:20px; font-weight:600;">Procesador Unificado de Asistencia y Análisis de Compensatorios</h2>
+    </div>
     <style>
         /* Ajustar el contenedor general del cargador */
         [data-testid="stFileUploader"] {
@@ -61,28 +64,38 @@ st.markdown("""
             display: none !important;
         }
         
-        /* ── ELIMINAR EL RECUADRO OSCURO DE ARCHIVOS CARGADOS ── */
-        /* Oculta el contenedor de la fila de datos que genera el icono oscuro y el texto de los megabytes (MB) */
-        [data-testid="stFileUploaderRow"] {
+        /* ── REMOCIÓN DE CAJAS EXTRA Y CONTENEDORES OSCUROS DE CARGA ── */
+        /* Forzar a que la sección interna que almacena los archivos no dibuje un bloque blanco flotante */
+        [data-testid="stFileUploaderDropzone"] > div {
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0px !important;
+            margin: 0px !important;
+            box-shadow: none !important;
+        }
+        /* Eliminar la estructura del widget de archivo que dibuja el fondo oscuro de fondo */
+        [data-testid="stFileUploaderRow"], 
+        [data-testid="stFileUploaderRow"] > div {
             background-color: transparent !important;
             border: none !important;
             box-shadow: none !important;
             padding: 0px !important;
             margin: 0px !important;
-            display: inline-flex !important;
-            align-items: center !important;
         }
-        /* Oculta la miniatura oscura y los indicadores de tamaño */
+        /* Ocultar el ícono negro de tipo de archivo, metadatos en MB y el botón nativo de basura */
         [data-testid="stFileUploaderRow"] svg,
-        [data-testid="stFileUploaderRow"] div:has(span) > span:last-child {
+        [data-testid="stFileUploaderRow"] button,
+        [data-testid="stFileUploaderRow"] data,
+        [data-testid="stFileUploaderRow"] small {
             display: none !important;
         }
-        /* Estilo para el nombre del archivo en texto plano */
+        /* Ajustar el texto plano para que se sitúe ordenadamente al lado del botón generado */
         [data-testid="stFileUploaderRow"] span {
             font-family: Arial, sans-serif !important;
             font-size: 14px !important;
             color: #333333 !important;
             font-weight: normal !important;
+            padding-left: 5px !important;
         }
     </style>
 """, unsafe_allow_html=True)

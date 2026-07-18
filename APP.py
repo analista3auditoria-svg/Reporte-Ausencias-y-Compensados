@@ -17,7 +17,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS avanzados para dejar el cargador plano e idéntico a la segunda imagen
+# Estilos CSS avanzados para limpiar el cuadro negro y dejar el archivo cargado en texto plano
 st.markdown("""
     <style>
         /* Ajustar el contenedor general del cargador */
@@ -37,7 +37,7 @@ st.markdown("""
             gap: 12px !important;
             min-height: 45px !important;
         }
-        /* Ocultar textos nativos de Streamlit ("Drag and drop", tamaño máximo, XLSX, etc.) */
+        /* Ocultar textos nativos de Streamlit ("Drag and drop", tamaño máximo, etc.) */
         [data-testid="stFileUploaderDropzone"] section,
         [data-testid="stFileUploaderDropzone"] small,
         [data-testid="stFileUploaderDropzone"] svg {
@@ -56,15 +56,30 @@ st.markdown("""
             font-size: 13px !important;
             cursor: pointer !important;
         }
-        /* Forzar a que el botón original de Streamlit quede oculto para dar prioridad al nuevo diseño */
+        /* Ocultar el botón original de Streamlit */
         [data-testid="stFileUploaderDropzone"] button {
             display: none !important;
         }
-        /* Ajustar el texto cuando no hay archivos o el nombre del archivo cargado */
-        [data-testid="stFileUploaderDropzone"] div {
+        
+        /* ── ELIMINAR EL CUADRO NEGRO DE ARCHIVO CARGADO ── */
+        /* Oculta la tarjeta nativa flotante con icono y tamaño en MB */
+        [data-testid="stFileUploaderFileName"] {
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0px !important;
+            box-shadow: none !important;
+        }
+        /* Oculta específicamente el icono/cuadro oscuro del tipo de archivo y el tamaño */
+        [data-testid="stFileUploaderFileName"] svg,
+        [data-testid="stFileUploaderFileName"] span:last-child {
+            display: none !important;
+        }
+        /* Estilo para el texto limpio del nombre del archivo cargado */
+        [data-testid="stFileUploaderFileName"] span:first-child {
             font-family: Arial, sans-serif !important;
             font-size: 14px !important;
-            color: #333333 !important;
+            color: #004B87 !important; /* Color azul clásico de enlace */
+            text-decoration: none !important;
         }
     </style>
 """, unsafe_allow_html=True)

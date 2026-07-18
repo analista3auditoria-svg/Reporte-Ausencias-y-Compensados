@@ -209,11 +209,11 @@ if archivo_cargado is not None:
                 unpivoted['_Orden']   = unpivoted['Concepto'].map(ORDEN_CONCEPTOS).fillna(10).astype(int)
                 unpivoted = unpivoted.drop(columns='_col').sort_values([col_id, '_Orden', 'FechaReal']).reset_index(drop=True)
 
-                # Fechas únicas
+            # Fechas únicas
                 mapa_fechas = unpivoted[['FechaReal', 'FechaCorta', 'dia', '_festivo']].drop_duplicates(subset=['FechaCorta']).dropna(subset=['FechaReal']).sort_values('FechaReal')
                 fechas_unicas  = mapa_fechas['FechaCorta'].tolist()
                 mapa_dia       = dict(zip(mapa_fechas['FechaCorta'], mapa_fechas['dia']))
-                mapa_festivo   = dict(zip(mapa_fechas['FechaCorta'], mapa_festivo))
+                mapa_festivo   = dict(zip(mapa_fechas['FechaCorta'], mapa_fechas['_festivo']))
 
                 # Pivot por fecha
                 pivotados = []

@@ -17,16 +17,16 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS avanzados para compactar el cargador de archivos (st.file_uploader)
+# Estilos CSS avanzados para dejar el cargador plano e idéntico a la segunda imagen
 st.markdown("""
     <style>
-        /* Reduce el tamaño del contenedor del cargador de archivos */
+        /* Ajustar el contenedor general del cargador */
         [data-testid="stFileUploader"] {
             padding: 0px;
         }
-        /* Transforma la caja grande de arrastrar en una fila compacta */
+        /* Transforma la zona de arrastre en un recuadro limpio y plano */
         [data-testid="stFileUploaderDropzone"] {
-            padding: 6px 12px !important;
+            padding: 8px 12px !important;
             border: 1px dashed #bfc7d2 !important;
             border-radius: 4px !important;
             background-color: #f8f9fa !important;
@@ -34,26 +34,37 @@ st.markdown("""
             flex-direction: row !important;
             align-items: center !important;
             justify-content: flex-start !important;
-            gap: 10px !important;
+            gap: 12px !important;
             min-height: 45px !important;
         }
-        /* Oculta los textos secundarios largos (como "Drag and drop file here") */
-        [data-testid="stFileUploaderDropzone"] section {
+        /* Ocultar textos nativos de Streamlit ("Drag and drop", tamaño máximo, XLSX, etc.) */
+        [data-testid="stFileUploaderDropzone"] section,
+        [data-testid="stFileUploaderDropzone"] small,
+        [data-testid="stFileUploaderDropzone"] svg {
             display: none !important;
         }
-        /* Oculta las restricciones de tamaño e iconos gigantes */
-        [data-testid="stFileUploaderDropzone"] svg, 
-        [data-testid="stFileUploaderDropzone"] small {
-            display: none !important;
-        }
-        /* Da estilo al botón interno para simular "Seleccionar archivo" */
-        [data-testid="stFileUploaderDropzone"] button {
-            padding: 4px 10px !important;
-            font-size: 13px !important;
-            background-color: #ffffff !important;
-            border: 1px solid #999999 !important;
+        /* Inyectar de forma simulada el botón gris clásico de "Seleccionar archivo" */
+        [data-testid="stFileUploaderDropzone"]::before {
+            content: "Seleccionar archivo" !important;
+            display: inline-block !important;
+            background-color: #f0f0f0 !important;
             color: #333333 !important;
-            border-radius: 3px !important;
+            border: 1px solid #767676 !important;
+            border-radius: 2px !important;
+            padding: 3px 8px !important;
+            font-family: Arial, sans-serif !important;
+            font-size: 13px !important;
+            cursor: pointer !important;
+        }
+        /* Forzar a que el botón original de Streamlit quede oculto para dar prioridad al nuevo diseño */
+        [data-testid="stFileUploaderDropzone"] button {
+            display: none !important;
+        }
+        /* Ajustar el texto cuando no hay archivos o el nombre del archivo cargado */
+        [data-testid="stFileUploaderDropzone"] div {
+            font-family: Arial, sans-serif !important;
+            font-size: 14px !important;
+            color: #333333 !important;
         }
     </style>
 """, unsafe_allow_html=True)

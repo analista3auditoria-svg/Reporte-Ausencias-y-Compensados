@@ -450,7 +450,7 @@ if archivo_cargado is not None:
                 output_buffer = io.BytesIO()
                 wb_c.save(output_buffer)
                 
-                # Éxito y entrega de descarga
+               # Éxito y entrega de descarga
                 st.success("🎉 ¡Reporte procesado exitosamente!")
                 
                 st.download_button(
@@ -459,5 +459,21 @@ if archivo_cargado is not None:
                     file_name="Reporte_Horizontal_Asistencia.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
+
+                # ── VENTANA INTERACTIVA PARA VER LAS AUSENCIAS ─────────────────
+                st.markdown("---")
+                st.header("📋 Vista Previa: Hoja de Ausencias")
+                
+                # Pestañas para organizar el listado y el resumen
+                tab1, tab2 = st.tabs(["📄 Listado de Ausencias", "📊 Resumen por Identificador"])
+                
+                with tab1:
+                    st.subheader("Registros Detallados")
+                    st.dataframe(listado, use_container_width=True, hide_index=True)
+                    
+                with tab2:
+                    st.subheader("Cantidad de Ausencias por Persona")
+                    st.dataframe(resumen, use_container_width=True, hide_index=True)
+
             except Exception as e:
                 st.error(f"❌ Ocurrió un error inesperado al procesar: {e}")

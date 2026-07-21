@@ -747,9 +747,9 @@ if archivo_cargado is not None and archivo_htcc is not None:
         col_down1, col_down2 = st.columns(2)
         with col_down1:
             st.download_button(
-                label="📥 Descargar Reporte Horizontal Procesado",
+                label="📥 Descargar Reporte Ausencias Y Compensados Procesado",
                 data=st.session_state.output_bytes,
-                file_name="Reporte_Horizontal_Asistencia.xlsx",
+                file_name="Reporte_Ausencias_Compensados.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         with col_down2:

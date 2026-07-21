@@ -155,7 +155,7 @@ MAPA_CONCEPTOS = {
     "HT Normales":                      "ht normales",
     "Recargo Nocturno 0.35%":           "recargo nocturno 0.35%",
     "Recargo Dominical Compensado":     "recargo dominical compensado",
-    "Recargo Dominical No Compensado":  "recargo dominical no compensado",
+    "Recargo Dominical No Compensado": "recargo dominical no compensado",
     "Horas Extras Diurnas 1.25%":       "horas extras diurnas 1.25%",
     "Recargo Festivo":                  "recargo festivo",
     "Hora Extra Diurna Dom/Fest":       "hora extra diurna dom/fest",
@@ -361,8 +361,17 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 cols_fecha_ok = [f for f in fechas_unicas if f in pivotado.columns]
                 pivotado = pivotado[[c for c in pivotado.columns if c not in fechas_unicas] + cols_fecha_ok].fillna(0)
 
+                # ── Asignación flexible de Nombre/Nombres/Apellidos ──
                 if 'Nombre' not in df_origen.columns:
-                    df_origen['Nombre'] = df_origen['Nombres'].astype(str).str.strip() + " " + df_origen['Apellidos'].astype(str).str.strip()
+                    if 'Apellidos' in df_origen.columns and 'Nombres' in df_origen.columns:
+                        df_origen['Nombre'] = df_origen['Nombres'].astype(str).str.strip() + " " + df_origen['Apellidos'].astype(str).str.strip()
+                    elif 'Nombres' in df_origen.columns:
+                        df_origen['Nombre'] = df_origen['Nombres'].astype(str).str.strip()
+                    elif 'Apellidos' in df_origen.columns:
+                        df_origen['Nombre'] = df_origen['Apellidos'].astype(str).str.strip()
+                    else:
+                        df_origen['Nombre'] = "Sin Nombre"
+
                 mapa_nombres = df_origen[[col_id, 'Nombre']].drop_duplicates(subset=[col_id]).copy()
                 mapa_nombres[col_id] = limpiar_id_a_texto(mapa_nombres[col_id])
 
@@ -435,7 +444,16 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 wb.save(output_buffer)
 
                 # ── Hoja Ausencias ────────────────────────────────────────────────
-                df['Nombre'] = df['Nombres'].astype(str).str.strip() + " " + df['Apellidos'].astype(str).str.strip()
+                if 'Nombre' not in df.columns:
+                    if 'Apellidos' in df.columns and 'Nombres' in df.columns:
+                        df['Nombre'] = df['Nombres'].astype(str).str.strip() + " " + df['Apellidos'].astype(str).str.strip()
+                    elif 'Nombres' in df.columns:
+                        df['Nombre'] = df['Nombres'].astype(str).str.strip()
+                    elif 'Apellidos' in df.columns:
+                        df['Nombre'] = df['Apellidos'].astype(str).str.strip()
+                    else:
+                        df['Nombre'] = "Sin Nombre"
+
                 mask_aus = (df[col_ausent].notna() & (df[col_ausent].astype(str).str.strip().str.lower() == 'ausencia'))
                 df_aus = df[mask_aus][[col_id, 'Nombre', 'FechaReal', col_ausent]].copy()
                 df_aus['Fecha'] = df_aus['FechaReal'].dt.strftime('%d/%m/%Y')

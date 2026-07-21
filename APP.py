@@ -65,7 +65,6 @@ st.markdown("""
         }
         
         /* ── REMOCIÓN DE CAJAS EXTRA Y CONTENEDORES OSCUROS DE CARGA ── */
-        /* Forzar a que la sección interna que almacena los archivos no dibuje un bloque blanco flotante */
         [data-testid="stFileUploaderDropzone"] > div {
             background-color: transparent !important;
             border: none !important;
@@ -73,7 +72,6 @@ st.markdown("""
             margin: 0px !important;
             box-shadow: none !important;
         }
-        /* Eliminar la estructura del widget de archivo que dibuja el fondo oscuro de fondo */
         [data-testid="stFileUploaderRow"], 
         [data-testid="stFileUploaderRow"] > div {
             background-color: transparent !important;
@@ -82,14 +80,12 @@ st.markdown("""
             padding: 0px !important;
             margin: 0px !important;
         }
-        /* Ocultar el ícono negro de tipo de archivo, metadatos en MB y el botón nativo de basura */
         [data-testid="stFileUploaderRow"] svg,
         [data-testid="stFileUploaderRow"] button,
         [data-testid="stFileUploaderRow"] data,
         [data-testid="stFileUploaderRow"] small {
             display: none !important;
         }
-        /* Ajustar el texto plano para que se sitúe ordenadamente al lado del botón generado */
         [data-testid="stFileUploaderRow"] span {
             font-family: Arial, sans-serif !important;
             font-size: 14px !important;
@@ -213,12 +209,10 @@ def celda(valor, ausent_raw):
     return a
 
 def limpiar_id_a_texto(valor):
-    # Si lo que recibe es una columna de Pandas (Series)
     if isinstance(valor, pd.Series):
         temp = pd.to_numeric(valor, errors='coerce')
         return temp.fillna(0).astype(int).astype(str).replace('0', '')
     
-    # Si lo que recibe es una sola celda/valor suelto (Scalar)
     if pd.isna(valor): 
         return ""
     s = str(valor).strip()
@@ -273,6 +267,41 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 df_origen = pd.read_excel(archivo_cargado, sheet_name=HOJA_ENTRADA)
                 df = df_origen.copy()
                 
+                # ── Lógica Robusta para Extraer / Construir la columna Nombre ──
+                def extraer_nombre_limpio(dataframe):
+                    cols_map = {str(c).strip().lower(): c for c in dataframe.columns}
+                    
+                    def buscar_c(patron):
+                        for k, orig in cols_map.items():
+                            if re.search(patron, k, re.IGNORECASE):
+                                return orig
+                        return None
+
+                    c_nom_comp  = buscar_c(r'nombre.*completo|^empleado|^usuario')
+                    c_nombres   = buscar_c(r'^nombre|^nombres')
+                    c_apellidos = buscar_c(r'^apellido|^apellidos')
+
+                    # 1. Si existe columna de Nombres y Apellidos por separado
+                    if c_nombres and c_apellidos and c_nombres != c_apellidos:
+                        n = dataframe[c_nombres].fillna('').astype(str).str.strip().replace('nan', '')
+                        a = dataframe[c_apellidos].fillna('').astype(str).str.strip().replace('nan', '')
+                        res = (n + " " + a).str.strip()
+                        if res.str.len().sum() > 0:
+                            return res
+
+                    # 2. Si existe columna única de Nombre / Empleado / Usuario
+                    col_unica = c_nom_comp or c_nombres or c_apellidos
+                    if col_unica:
+                        res = dataframe[col_unica].fillna('').astype(str).str.strip().replace('nan', '')
+                        if res.str.len().sum() > 0:
+                            return res
+
+                    return pd.Series(["Sin Nombre"] * len(dataframe))
+
+                # Asignamos la columna 'Nombre' limpia y completa
+                df['Nombre'] = extraer_nombre_limpio(df)
+                df_origen['Nombre'] = df['Nombre']
+
                 col_map = {str(c).strip().lower(): c for c in df.columns}
                 def buscar_col(patrones):
                     for pat in patrones:
@@ -341,7 +370,6 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 unpivoted['_Orden']   = unpivoted['Concepto'].map(ORDEN_CONCEPTOS).fillna(10).astype(int)
                 unpivoted = unpivoted.drop(columns='_col').sort_values([col_id, '_Orden', 'FechaReal']).reset_index(drop=True)
 
-                # Corrección del mapa_festivo
                 mapa_fechas = unpivoted[['FechaReal', 'FechaCorta', 'dia', '_festivo']].drop_duplicates(subset=['FechaCorta']).dropna(subset=['FechaReal']).sort_values('FechaReal')
                 fechas_unicas  = mapa_fechas['FechaCorta'].tolist()
                 mapa_dia       = dict(zip(mapa_fechas['FechaCorta'], mapa_fechas['dia']))
@@ -360,17 +388,6 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 pivotado = pd.concat(pivotados, ignore_index=True)
                 cols_fecha_ok = [f for f in fechas_unicas if f in pivotado.columns]
                 pivotado = pivotado[[c for c in pivotado.columns if c not in fechas_unicas] + cols_fecha_ok].fillna(0)
-
-                # ── Asignación flexible de Nombre/Nombres/Apellidos ──
-                if 'Nombre' not in df_origen.columns:
-                    if 'Apellidos' in df_origen.columns and 'Nombres' in df_origen.columns:
-                        df_origen['Nombre'] = df_origen['Nombres'].astype(str).str.strip() + " " + df_origen['Apellidos'].astype(str).str.strip()
-                    elif 'Nombres' in df_origen.columns:
-                        df_origen['Nombre'] = df_origen['Nombres'].astype(str).str.strip()
-                    elif 'Apellidos' in df_origen.columns:
-                        df_origen['Nombre'] = df_origen['Apellidos'].astype(str).str.strip()
-                    else:
-                        df_origen['Nombre'] = "Sin Nombre"
 
                 mapa_nombres = df_origen[[col_id, 'Nombre']].drop_duplicates(subset=[col_id]).copy()
                 mapa_nombres[col_id] = limpiar_id_a_texto(mapa_nombres[col_id])
@@ -444,16 +461,6 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 wb.save(output_buffer)
 
                 # ── Hoja Ausencias ────────────────────────────────────────────────
-                if 'Nombre' not in df.columns:
-                    if 'Apellidos' in df.columns and 'Nombres' in df.columns:
-                        df['Nombre'] = df['Nombres'].astype(str).str.strip() + " " + df['Apellidos'].astype(str).str.strip()
-                    elif 'Nombres' in df.columns:
-                        df['Nombre'] = df['Nombres'].astype(str).str.strip()
-                    elif 'Apellidos' in df.columns:
-                        df['Nombre'] = df['Apellidos'].astype(str).str.strip()
-                    else:
-                        df['Nombre'] = "Sin Nombre"
-
                 mask_aus = (df[col_ausent].notna() & (df[col_ausent].astype(str).str.strip().str.lower() == 'ausencia'))
                 df_aus = df[mask_aus][[col_id, 'Nombre', 'FechaReal', col_ausent]].copy()
                 df_aus['Fecha'] = df_aus['FechaReal'].dt.strftime('%d/%m/%Y')

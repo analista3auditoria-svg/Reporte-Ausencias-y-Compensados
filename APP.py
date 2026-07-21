@@ -266,7 +266,7 @@ if archivo_cargado is not None and archivo_htcc is not None:
         st.session_state.df_c = None
         st.session_state.resultados_c = None
 
-    if st.button("🚀 Procesar Reporte e Historial", type="primary"):
+    if st.button("🚀 Procesar Información", type="primary"):
         with st.spinner("Procesando datos y estructurando archivos de Excel..."):
             try:
                 # Carga de datos origen

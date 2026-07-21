@@ -143,12 +143,12 @@ PERIODOS = {
     "Abril":      (pd.Timestamp(2026, 3, 21), pd.Timestamp(2026, 4, 17)),
     "Mayo":       (pd.Timestamp(2026, 4, 18), pd.Timestamp(2026, 5, 15)),
     "Junio":      (pd.Timestamp(2026, 5, 16), pd.Timestamp(2026, 6, 12)),
-    "Julio":      (pd.Timestamp(2026, 6, 13), pd.Timestamp(2026, 7, 17)),
-    "Agosto":     (pd.Timestamp(2026, 7, 18), pd.Timestamp(2026, 8, 14)),
-    "Septiembre": (pd.Timestamp(2026, 8, 15), pd.Timestamp(2026, 9, 18)),
+    "Julio":      (pd.Timestamp(2026, 6, 13), pd.Timestamp(2026, 7, 10)),
+    "Agosto":     (pd.Timestamp(2026, 7, 11), pd.Timestamp(2026, 8, 7)),
+    "Septiembre": (pd.Timestamp(2026, 8, 8), pd.Timestamp(2026, 9, 18)),
     "Octubre":    (pd.Timestamp(2026, 9, 19), pd.Timestamp(2026, 10, 16)),
     "Noviembre":  (pd.Timestamp(2026, 10, 17), pd.Timestamp(2026, 11, 13)),
-    "Diciembre":  (pd.Timestamp(2026, 11, 14), pd.Timestamp(2026, 12, 31))
+    "Diciembre":  (pd.Timestamp(2026, 11, 14), pd.Timestamp(2026, 12, 11))
 }
 
 MAPA_CONCEPTOS = {

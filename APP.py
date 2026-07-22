@@ -135,16 +135,16 @@ AUSENCIAS_AMARILLO_SET = {"P"}
 MESES_ES = {1:"ene",2:"feb",3:"mar",4:"abr",5:"may",6:"jun",7:"jul",8:"ago",9:"sep",10:"oct",11:"nov",12:"dic"}
 
 PERIODOS = {
-    "Marzo":      (pd.Timestamp(2026, 2, 14), pd.Timestamp(2026, 3, 20)),
-    "Abril":      (pd.Timestamp(2026, 3, 21), pd.Timestamp(2026, 4, 17)),
-    "Mayo":       (pd.Timestamp(2026, 4, 18), pd.Timestamp(2026, 5, 15)),
-    "Junio":      (pd.Timestamp(2026, 5, 16), pd.Timestamp(2026, 6, 12)),
-    "Julio":      (pd.Timestamp(2026, 6, 13), pd.Timestamp(2026, 7, 10)),
-    "Agosto":     (pd.Timestamp(2026, 7, 11), pd.Timestamp(2026, 8, 7)),
-    "Septiembre": (pd.Timestamp(2026, 8, 8), pd.Timestamp(2026, 9, 18)),
-    "Octubre":    (pd.Timestamp(2026, 9, 19), pd.Timestamp(2026, 10, 16)),
-    "Noviembre":  (pd.Timestamp(2026, 10, 17), pd.Timestamp(2026, 11, 13)),
-    "Diciembre":  (pd.Timestamp(2026, 11, 14), pd.Timestamp(2026, 12, 11))
+    "Marzo":      (pd.Timestamp(2026, 2, 15), pd.Timestamp(2026, 3, 21)),
+    "Abril":      (pd.Timestamp(2026, 3, 22), pd.Timestamp(2026, 4, 18)),
+    "Mayo":       (pd.Timestamp(2026, 4, 19), pd.Timestamp(2026, 5, 16)),
+    "Junio":      (pd.Timestamp(2026, 5, 17), pd.Timestamp(2026, 6, 13)),
+    "Julio":      (pd.Timestamp(2026, 6, 14), pd.Timestamp(2026, 7, 11)),
+    "Agosto":     (pd.Timestamp(2026, 7, 12), pd.Timestamp(2026, 8, 8)),
+    "Septiembre": (pd.Timestamp(2026, 8, 9), pd.Timestamp(2026, 9, 19)),
+    "Octubre":    (pd.Timestamp(2026, 9, 20), pd.Timestamp(2026, 10, 17)),
+    "Noviembre":  (pd.Timestamp(2026, 10, 18), pd.Timestamp(2026, 11, 14)),
+    "Diciembre":  (pd.Timestamp(2026, 11, 15), pd.Timestamp(2026, 12, 12))
 }
 
 MAPA_CONCEPTOS = {

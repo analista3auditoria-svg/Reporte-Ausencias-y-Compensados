@@ -281,7 +281,6 @@ if archivo_cargado is not None and archivo_htcc is not None:
                     c_nombres   = buscar_c(r'^nombre|^nombres')
                     c_apellidos = buscar_c(r'^apellido|^apellidos')
 
-                    # 1. Si existe columna de Nombres y Apellidos por separado
                     if c_nombres and c_apellidos and c_nombres != c_apellidos:
                         n = dataframe[c_nombres].fillna('').astype(str).str.strip().replace('nan', '')
                         a = dataframe[c_apellidos].fillna('').astype(str).str.strip().replace('nan', '')
@@ -289,7 +288,6 @@ if archivo_cargado is not None and archivo_htcc is not None:
                         if res.str.len().sum() > 0:
                             return res
 
-                    # 2. Si existe columna única de Nombre / Empleado / Usuario
                     col_unica = c_nom_comp or c_nombres or c_apellidos
                     if col_unica:
                         res = dataframe[col_unica].fillna('').astype(str).str.strip().replace('nan', '')
@@ -298,7 +296,6 @@ if archivo_cargado is not None and archivo_htcc is not None:
 
                     return pd.Series(["Sin Nombre"] * len(dataframe))
 
-                # Asignamos la columna 'Nombre' limpia y completa
                 df['Nombre'] = extraer_nombre_limpio(df)
                 df_origen['Nombre'] = df['Nombre']
 
@@ -314,6 +311,16 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 col_dia    = buscar_col([r'^dia$'])
                 col_ht     = buscar_col([r'^ht$'])
                 col_ausent = buscar_col([r'^ausentismo$'])
+
+                # ── Detección de Ciudad y Sede (o Grupo / Contrato) ──
+                col_ciudad = buscar_col([r'^ciudad$', r'municipio', r'regional'])
+                col_sede   = buscar_col([r'^sede$', r'^grupo$', r'^contrato$', r'ubicacion', r'lugar'])
+
+                df['Ciudad'] = df[col_ciudad].fillna('No Registra').astype(str).str.strip() if col_ciudad else 'No Registra'
+                df['Sede']   = df[col_sede].fillna('No Registra').astype(str).str.strip() if col_sede else 'No Registra'
+                
+                df_origen['Ciudad'] = df['Ciudad']
+                df_origen['Sede']   = df['Sede']
 
                 col_rno   = buscar_col([r'recargo nocturno'])
                 col_rdc   = buscar_col([r'dominical compensado'])
@@ -389,6 +396,7 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 cols_fecha_ok = [f for f in fechas_unicas if f in pivotado.columns]
                 pivotado = pivotado[[c for c in pivotado.columns if c not in fechas_unicas] + cols_fecha_ok].fillna(0)
 
+                # Mapeo de Nombres, Ciudad y Sede por ID
                 mapa_nombres = df_origen[[col_id, 'Nombre']].drop_duplicates(subset=[col_id]).copy()
                 mapa_nombres[col_id] = limpiar_id_a_texto(mapa_nombres[col_id])
 
@@ -460,37 +468,57 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 ws.freeze_panes, ws.auto_filter.ref = 'D3', f"A2:{get_column_letter(final.shape[1])}{final.shape[0] + 2}"
                 wb.save(output_buffer)
 
-                # ── Hoja Ausencias ────────────────────────────────────────────────
+                # ── Hoja Ausencias (Incluye Ciudad y Sede) ─────────────────────────
                 mask_aus = (df[col_ausent].notna() & (df[col_ausent].astype(str).str.strip().str.lower() == 'ausencia'))
-                df_aus = df[mask_aus][[col_id, 'Nombre', 'FechaReal', col_ausent]].copy()
+                df_aus = df[mask_aus][[col_id, 'Nombre', 'Ciudad', 'Sede', 'FechaReal', col_ausent]].copy()
                 df_aus['Fecha'] = df_aus['FechaReal'].dt.strftime('%d/%m/%Y')
                 df_aus['_ord']  = pd.to_numeric(df_aus[col_id], errors='coerce')
                 df_aus = df_aus.sort_values(['_ord', 'FechaReal']).reset_index(drop=True)
-                listado = df_aus[[col_id, 'Nombre', 'Fecha', col_ausent]].copy()
-                listado.columns = ['Identificador', 'Nombre', 'Fecha', 'Novedad']
-                resumen = listado.groupby('Identificador', as_index=False).size().rename(columns={'size': 'Cantidad'}).sort_values('Cantidad', ascending=False).reset_index(drop=True)
+                
+                listado = df_aus[[col_id, 'Nombre', 'Ciudad', 'Sede', 'Fecha', col_ausent]].copy()
+                listado.columns = ['Identificador', 'Nombre', 'Ciudad', 'Sede', 'Fecha', 'Novedad']
+                
+                resumen = listado.groupby(['Identificador', 'Nombre', 'Ciudad', 'Sede'], as_index=False).size().rename(columns={'size': 'Cantidad'}).sort_values('Cantidad', ascending=False).reset_index(drop=True)
 
                 wb2 = load_workbook(output_buffer)
                 ws2 = wb2.create_sheet('Ausencias')
-                for ci, n in enumerate(['Identificador', 'Nombre', 'Fecha', 'Novedad'], start=1):
+                
+                headers_listado = ['Identificador', 'Nombre', 'Ciudad', 'Sede', 'Fecha', 'Novedad']
+                for ci, n in enumerate(headers_listado, start=1):
                     c = ws2.cell(row=1, column=ci, value=n)
                     c.font, c.fill, c.alignment, c.border = Font(name='Arial', bold=True, color='FFFFFF', size=10), PatternFill('solid', fgColor='1F4E79'), Alignment(horizontal='center', vertical='center'), brd
+                
                 for ri, row in listado.iterrows():
                     for ci, val in enumerate(row, start=1):
                         c = ws2.cell(row=ri + 2, column=ci, value=val)
-                        c.font, c.fill, c.alignment, c.border = Font(name='Arial', size=9), PatternFill('solid', fgColor='FFFFFF' if ri % 2 == 0 else 'F2F2F2'), Alignment(horizontal='left' if ci <= 2 else 'center', vertical='center'), brd
-                ws2.column_dimensions['A'].width, ws2.column_dimensions['B'].width, ws2.column_dimensions['C'].width, ws2.column_dimensions['D'].width = 15, 35, 18, 30
+                        c.font, c.fill, c.alignment, c.border = Font(name='Arial', size=9), PatternFill('solid', fgColor='FFFFFF' if ri % 2 == 0 else 'F2F2F2'), Alignment(horizontal='left' if ci in [2, 3, 4] else 'center', vertical='center'), brd
+                
+                ws2.column_dimensions['A'].width = 15
+                ws2.column_dimensions['B'].width = 35
+                ws2.column_dimensions['C'].width = 20
+                ws2.column_dimensions['D'].width = 25
+                ws2.column_dimensions['E'].width = 15
+                ws2.column_dimensions['F'].width = 25
 
-                for ci, n in enumerate(['Identificador', 'Cantidad'], start=9):
+                headers_resumen = ['Identificador', 'Nombre', 'Ciudad', 'Sede', 'Cantidad']
+                start_col_resumen = 8
+                for ci, n in enumerate(headers_resumen, start=start_col_resumen):
                     c = ws2.cell(row=1, column=ci, value=n)
                     c.font, c.fill, c.alignment, c.border = Font(name='Arial', bold=True, color='FFFFFF', size=10), PatternFill('solid', fgColor='1F4E79'), Alignment(horizontal='center', vertical='center'), brd
+                
                 for ri, row in resumen.iterrows():
-                    c_id = ws2.cell(row=ri + 2, column=9, value=row['Identificador'])
-                    c_id.font, c_id.fill, c_id.alignment, c_id.border = Font(name='Arial', size=9), PatternFill('solid', fgColor='FFFFFF' if ri % 2 == 0 else 'F2F2F2'), Alignment(horizontal='left', vertical='center'), brd
-                    c_cnt = ws2.cell(row=ri + 2, column=10, value=row['Cantidad'])
-                    c_cnt.font, c_cnt.fill, c_cnt.alignment, c_cnt.border = Font(name='Arial', size=9), PatternFill('solid', fgColor='FFFFFF' if ri % 2 == 0 else 'F2F2F2'), Alignment(horizontal='center', vertical='center'), brd
-                ws2.column_dimensions['I'].width, ws2.column_dimensions['J'].width = 15, 12
-                ws2.freeze_panes, ws2.auto_filter.ref = 'A2', f"A1:J{len(listado) + 1}"
+                    for ci, col_n in enumerate(headers_resumen, start=start_col_resumen):
+                        val = row[col_n]
+                        c = ws2.cell(row=ri + 2, column=ci, value=val)
+                        c.font, c.fill, c.alignment, c.border = Font(name='Arial', size=9), PatternFill('solid', fgColor='FFFFFF' if ri % 2 == 0 else 'F2F2F2'), Alignment(horizontal='left' if col_n in ['Nombre', 'Ciudad', 'Sede'] else 'center', vertical='center'), brd
+                
+                ws2.column_dimensions['H'].width = 15
+                ws2.column_dimensions['I'].width = 35
+                ws2.column_dimensions['J'].width = 20
+                ws2.column_dimensions['K'].width = 25
+                ws2.column_dimensions['L'].width = 12
+                
+                ws2.freeze_panes, ws2.auto_filter.ref = 'A2', f"A1:L{max(len(listado), len(resumen)) + 1}"
                 
                 output_buffer = io.BytesIO()
                 wb2.save(output_buffer)
@@ -635,7 +663,7 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 htcc_buffer = io.BytesIO()
                 wb_htcc.save(htcc_buffer)
 
-                # ── Hoja Análisis C ───────────────────────────────────────────────
+                # ── Hoja Análisis C (Incluye Ciudad y Sede) ─────────────────────────
                 fecha_inicio_sem = pd.Timestamp(fecha_inicio_input)
                 wb_c = load_workbook(output_buffer)
                 ws_c = wb_c['Reporte_Horizontal']
@@ -672,7 +700,11 @@ if archivo_cargado is not None and archivo_htcc is not None:
                     num_sem += 1
 
                 df_id_clean = pd.to_numeric(df[col_id], errors='coerce').fillna(0).astype(int).astype(str)
+                
+                # Mapeos de metadatos por empleado
                 mapa_nombres_c = dict(zip(df_id_clean, df['Nombre'].astype(str).str.strip()))
+                mapa_ciudad_c  = dict(zip(df_id_clean, df['Ciudad'].astype(str).str.strip()))
+                mapa_sede_c    = dict(zip(df_id_clean, df['Sede'].astype(str).str.strip()))
 
                 empleados_c = []
                 for row in range(3, ws_c.max_row + 1):
@@ -688,7 +720,16 @@ if archivo_cargado is not None and archivo_htcc is not None:
                     except: id_clean = str(id_val).strip()
                     
                     valores = {col_info["col"]: str(ws_c.cell(row=row, column=col_info["col"]).value).strip() if ws_c.cell(row=row, column=col_info["col"]).value is not None else None for col_info in columnas_c}
-                    empleados_c.append({"id": id_clean, "nombre": mapa_nombres_c.get(id_clean, "No Encontrado"), "concepto": conc_val, "fila": row, "valores": valores})
+                    
+                    empleados_c.append({
+                        "id": id_clean, 
+                        "nombre": mapa_nombres_c.get(id_clean, "No Encontrado"), 
+                        "ciudad": mapa_ciudad_c.get(id_clean, "No Registra"), 
+                        "sede": mapa_sede_c.get(id_clean, "No Registra"), 
+                        "concepto": conc_val, 
+                        "fila": row, 
+                        "valores": valores
+                    })
 
                 resultados_c = []
                 max_fechas_c = 0
@@ -707,7 +748,17 @@ if archivo_cargado is not None and archivo_htcc is not None:
                         if estado != "-" and cantidad_c > 0:
                             fechas_c_list = [c["fecha_str"] for c in cols_c_val]
                             max_fechas_c = max(max_fechas_c, len(fechas_c_list))
-                            fila = {"Identificador": emp["id"], "Nombre": emp["nombre"], "Concepto": emp["concepto"], "Trabajo Domingo": "SI" if trabajo_domingo else "NO", "Cant. C": cantidad_c, "Estado": estado}
+                            
+                            fila = {
+                                "Identificador": emp["id"], 
+                                "Nombre": emp["nombre"], 
+                                "Ciudad": emp["ciudad"], 
+                                "Sede": emp["sede"], 
+                                "Concepto": emp["concepto"], 
+                                "Trabajo Domingo": "SI" if trabajo_domingo else "NO", 
+                                "Cant. C": cantidad_c, 
+                                "Estado": estado
+                            }
                             for i, f in enumerate(fechas_c_list, 1): fila[f"Fecha {i}"] = f
                             resultados_c.append(fila)
 
@@ -715,7 +766,7 @@ if archivo_cargado is not None and archivo_htcc is not None:
 
                 if not df_c.empty:
                     ws_out_c = wb_c.create_sheet("Analisis C")
-                    headers_base = ["Identificador", "Nombre", "Concepto", "Trabajo Domingo", "Cant. C", "Estado"]
+                    headers_base = ["Identificador", "Nombre", "Ciudad", "Sede", "Concepto", "Trabajo Domingo", "Cant. C", "Estado"]
                     headers_fechas = [f"Fecha {i}" for i in range(1, max_fechas_c + 1)]
                     headers_c = headers_base + headers_fechas
                     brd_c = Border(left=Side(style="thin", color="CCCCCC"), right=Side(style="thin", color="CCCCCC"), top=Side(style="thin", color="CCCCCC"), bottom=Side(style="thin", color="CCCCCC"))
@@ -732,7 +783,7 @@ if archivo_cargado is not None and archivo_htcc is not None:
                         for col_i, h in enumerate(headers_c, 1):
                             val = row.get(h, "")
                             cell = ws_out_c.cell(row=row_i, column=col_i, value=val)
-                            cell.alignment = Alignment(horizontal="left" if h == "Nombre" else "center", vertical="center")
+                            cell.alignment = Alignment(horizontal="left" if h in ["Nombre", "Ciudad", "Sede"] else "center", vertical="center")
                             cell.border = brd_c
                             if h == "Estado":
                                 cell.fill = PatternFill("solid", fgColor='92D050' if val == "CUMPLE" else 'FF0000')
@@ -742,13 +793,13 @@ if archivo_cargado is not None and archivo_htcc is not None:
                             else:
                                 cell.fill, cell.font = PatternFill("solid", fgColor=color_fondo), Font(name="Arial", size=9)
 
-                    for col_i, ancho in enumerate([15, 35, 20, 16, 10, 12] + [12] * max_fechas_c, 1):
+                    for col_i, ancho in enumerate([15, 35, 20, 25, 20, 16, 10, 12] + [12] * max_fechas_c, 1):
                         ws_out_c.column_dimensions[get_column_letter(col_i)].width = ancho
                     
                     fila_total_c = len(df_c) + 2
                     ws_out_c.cell(row=fila_total_c, column=1, value="TOTALES").font = Font(bold=True)
-                    ws_out_c.cell(row=fila_total_c, column=5, value=f"CUMPLE: {n_cumple}").font = Font(bold=True, color="2E7D32")
-                    ws_out_c.cell(row=fila_total_c, column=6, value=f"NO CUMPLE: {n_no_cumple}").font = Font(bold=True, color="C62828")
+                    ws_out_c.cell(row=fila_total_c, column=7, value=f"CUMPLE: {n_cumple}").font = Font(bold=True, color="2E7D32")
+                    ws_out_c.cell(row=fila_total_c, column=8, value=f"NO CUMPLE: {n_no_cumple}").font = Font(bold=True, color="C62828")
                     ws_out_c.freeze_panes, ws_out_c.auto_filter.ref = 'A2', f"A1:{get_column_letter(len(headers_c))}{fila_total_c - 1}"
                 
                 output_buffer = io.BytesIO()

@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Auditor-IA Costos Tercerizados TigoUNE",
+    page_title="Auditor-IA Trabajo Suplementario",
     page_icon="📋",
     layout="wide"
 )
@@ -131,7 +131,7 @@ st.markdown("""
             <img src="https://cdn1.totalcommerce.cloud/casalimpia/web_content/assets/logo-casa-limpia.svg" alt="Casalimpia Logo" />
             <div class="title-text">
                 <h1>Auditor-IA Costos Tercerizados TigoUNE</h1>
-                <p>Plataforma Corporativa para el Cruce de Costos vs. Facturado</p>
+                <p>Plataforma</p>
             </div>
         </div>
     </div>

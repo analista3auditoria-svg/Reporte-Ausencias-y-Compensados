@@ -19,8 +19,25 @@ st.set_page_config(
 
 # Estilos CSS definitivos para forzar el diseño plano sin cuadros de fondo al cargar
 st.markdown("""
-    <div style="background-color:#1F4E79; padding:10px 20px; border-radius:8px; text-align:center; margin-bottom:15px;">
-        <h2 style="color:white; margin:0; font-size:20px; font-weight:600;">SaberBot Auditoría de Trabajo Suplementario</h2>
+    <div style="
+        background-color: #F8FAFC; 
+        border-left: 5px solid #0066CC; 
+        border-radius: 10px; 
+        padding: 18px 25px; 
+        margin-bottom: 25px; 
+        box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 20px;">
+        <img src="https://via.placeholder.com/150x45?text=Casalimpia" alt="Logo" style="height: 45px; object-fit: contain;">
+        <div>
+            <h2 style="color: #0066CC; margin: 0; font-size: 22px; font-weight: 700; font-family: Arial, sans-serif;">
+                SaberBot Auditoría de Trabajo Suplementario
+            </h2>
+            <p style="color: #666666; margin: 4px 0 0 0; font-size: 13px; font-family: Arial, sans-serif;">
+                Plataforma Corporativa para el Cruce y Auditoría de Horas Suplementarias
+            </p>
+        </div>
     </div>
     <style>
         /* Ajustar el contenedor general del cargador */

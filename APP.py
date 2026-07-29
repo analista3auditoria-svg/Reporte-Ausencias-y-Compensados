@@ -12,39 +12,56 @@ warnings.filterwarnings('ignore')
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Auditoría de Trabajo Suplementario",
+    page_title="Auditor-IA Costos Tercerizados TigoUNE",
     page_icon="📋",
     layout="wide"
 )
 
-# Estilos CSS definitivos para forzar el diseño plano sin cuadros de fondo al cargar
+# Banner corporativo con logo oficial y estilos CSS
 st.markdown("""
-    <div style="
-        background-color: #F8FAFC; 
-        border-left: 5px solid #0066CC; 
-        border-radius: 10px; 
-        padding: 18px 25px; 
-        margin-bottom: 25px; 
-        box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.05);
-        display: flex;
-        align-items: center;
-        gap: 20px;">
-        <img src="https://via.placeholder.com/150x45?text=Casalimpia" alt="Logo" style="height: 45px; object-fit: contain;">
-        <div>
-            <h2 style="color: #0066CC; margin: 0; font-size: 22px; font-weight: 700; font-family: Arial, sans-serif;">
-                SaberBot Auditoría de Trabajo Suplementario
-            </h2>
-            <p style="color: #666666; margin: 4px 0 0 0; font-size: 13px; font-family: Arial, sans-serif;">
-                Plataforma Corporativa para el Cruce y Auditoría de Horas Suplementarias
-            </p>
-        </div>
-    </div>
     <style>
-        /* Ajustar el contenedor general del cargador */
+        .header-brand {
+            background-color: #f8fafc;
+            border-left: 5px solid #0066cc;
+            border-top: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .header-brand-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .header-brand-content img {
+            height: 45px;
+            width: auto;
+            object-fit: contain;
+        }
+        .title-text h1 {
+            color: #0066cc !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.2 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+        .title-text p {
+            color: #64748b !important;
+            font-size: 13px !important;
+            margin: 4px 0 0 0 !important;
+            padding: 0 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+
+        /* Estilos del cargador de archivos de Streamlit */
         [data-testid="stFileUploader"] {
             padding: 0px;
         }
-        /* Transforma la zona de arrastre en un recuadro limpio y plano */
         [data-testid="stFileUploaderDropzone"] {
             padding: 8px 12px !important;
             border: 1px dashed #bfc7d2 !important;
@@ -57,13 +74,11 @@ st.markdown("""
             gap: 12px !important;
             min-height: 45px !important;
         }
-        /* Ocultar textos nativos de Streamlit ("Drag and drop", tamaño máximo, etc.) */
         [data-testid="stFileUploaderDropzone"] section,
         [data-testid="stFileUploaderDropzone"] small,
         [data-testid="stFileUploaderDropzone"] svg {
             display: none !important;
         }
-        /* Inyectar de forma simulada el botón gris clásico de "Seleccionar archivo" */
         [data-testid="stFileUploaderDropzone"]::before {
             content: "Seleccionar archivo" !important;
             display: inline-block !important;
@@ -76,12 +91,11 @@ st.markdown("""
             font-size: 13px !important;
             cursor: pointer !important;
         }
-        /* Ocultar el botón original de Streamlit */
         [data-testid="stFileUploaderDropzone"] button {
             display: none !important;
         }
         
-        /* ── REMOCIÓN DE CAJAS EXTRA Y CONTENEDORES OSCUROS DE CARGA ── */
+        /* Remoción de contenedores extras en la carga */
         [data-testid="stFileUploaderDropzone"] > div {
             background-color: transparent !important;
             border: none !important;
@@ -111,12 +125,22 @@ st.markdown("""
             padding-left: 5px !important;
         }
     </style>
+
+    <div class="header-brand">
+        <div class="header-brand-content">
+            <img src="https://cdn1.totalcommerce.cloud/casalimpia/web_content/assets/logo-casa-limpia.svg" alt="Casalimpia Logo" />
+            <div class="title-text">
+                <h1>Auditor-IA Costos Tercerizados TigoUNE</h1>
+                <p>Plataforma Corporativa para el Cruce de Costos vs. Facturado</p>
+            </div>
+        </div>
+    </div>
 """, unsafe_allow_html=True)
 
 
 # ── Configuración Inicial Interna ─────────────────────────────────────────
 MAPA_ausencias = {
-    "ninguno":                   None,
+    "ninguno":                     None,
     "ausencia":                  "A",
     "ausencia sin justa causa sd": "FSJ",
     "enfermedad comun":          "EC",
@@ -165,13 +189,13 @@ PERIODOS = {
 }
 
 MAPA_CONCEPTOS = {
-    "HT Normales":                      "ht normales",
-    "Recargo Nocturno 0.35%":           "recargo nocturno 0.35%",
-    "Recargo Dominical Compensado":     "recargo dominical compensado",
+    "HT Normales":                       "ht normales",
+    "Recargo Nocturno 0.35%":            "recargo nocturno 0.35%",
+    "Recargo Dominical Compensado":      "recargo dominical compensado",
     "Recargo Dominical No Compensado": "recargo dominical no compensado",
-    "Horas Extras Diurnas 1.25%":       "horas extras diurnas 1.25%",
+    "Horas Extras Diurnas 1.25%":        "horas extras diurnas 1.25%",
     "Recargo Festivo":                  "recargo festivo",
-    "Hora Extra Diurna Dom/Fest":       "hora extra diurna dom/fest",
+    "Hora Extra Diurna Dom/Fest":        "hora extra diurna dom/fest",
     "Recargo Festivo Adicional":        "recargo festivo adicional",
 }
 

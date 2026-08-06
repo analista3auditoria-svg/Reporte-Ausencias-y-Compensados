@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Auditor-IA Trabajo Suplementario",
+    page_title="Auditor-IA Costos Tercerizados TigoUNE",
     page_icon="📋",
     layout="wide"
 )
@@ -130,8 +130,8 @@ st.markdown("""
         <div class="header-brand-content">
             <img src="https://cdn1.totalcommerce.cloud/casalimpia/web_content/assets/logo-casa-limpia.svg" alt="Casalimpia Logo" />
             <div class="title-text">
-                <h1>Auditor-IA Trabajo Suplementario</h1>
-                <p>Plataforma</p>
+                <h1>Auditor-IA Costos Tercerizados TigoUNE</h1>
+                <p>Plataforma Corporativa para el Cruce de Costos vs. Facturado</p>
             </div>
         </div>
     </div>
@@ -599,13 +599,21 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 FILA_ENCABEZADO = 4
                 COL_INICIO_FECHAS = 12
 
-                col_periodo_libro3 = col_id_libro3 = col_concepto_libro3 = None
+                # ── Detección Dinámica de Columnas Clave en HTCC ──
+                col_periodo_libro3 = col_id_libro3 = col_concepto_libro3 = col_cantidad_libro3 = None
                 for cell in ws_htcc[FILA_ENCABEZADO]:
                     if cell.value is None: continue
                     val = str(cell.value).strip().lower()
                     if val == "periodo": col_periodo_libro3 = cell.column
                     if "identificador" in val: col_id_libro3 = cell.column
                     if "nombre concepto" in val: col_concepto_libro3 = cell.column
+                    if val == "cantidad": col_cantidad_libro3 = cell.column
+
+                # Respaldo si no encuentra 'cantidad' por encabezado
+                if col_cantidad_libro3 is None:
+                    col_cantidad_libro3 = 7
+
+                col_cantidad_letra = get_column_letter(col_cantidad_libro3)
 
                 col_fecha_libro3 = {}
                 max_col_fecha = COL_INICIO_FECHAS
@@ -697,7 +705,8 @@ if archivo_cargado is not None and archivo_htcc is not None:
                     c_total = ws_htcc.cell(row=fila_excel, column=COL_TOTAL_IDX, value=formula_total)
                     c_total.number_format, c_total.font, c_total.alignment, c_total.fill = '#,##0.00', Font(name="Arial", size=9, bold=True), Alignment(horizontal="center", vertical="center"), PatternFill(fill_type="solid", fgColor=color_fondo)
 
-                    formula_dif = f"=ROUND({get_column_letter(7)}{fila_excel}-{get_column_letter(COL_TOTAL_IDX)}{fila_excel},0)"
+                    # Fórmula de Diferencia referenciando la letra de la columna "Cantidad" de forma dinámica
+                    formula_dif = f"=ROUND({col_cantidad_letra}{fila_excel}-{get_column_letter(COL_TOTAL_IDX)}{fila_excel},0)"
                     c_dif = ws_htcc.cell(row=fila_excel, column=COL_DIF_IDX, value=formula_dif)
                     c_dif.number_format, c_dif.font, c_dif.alignment, c_dif.fill = '#,##0.00', Font(name="Arial", size=9, bold=True), Alignment(horizontal="center", vertical="center"), PatternFill(fill_type="solid", fgColor="FFFFFF")
 

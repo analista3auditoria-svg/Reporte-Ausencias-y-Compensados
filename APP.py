@@ -750,8 +750,6 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     mapa_cols_ht_a_comp[col_ht_idx] = col_comp_idx
                     col_comp_idx += 1
 
-                col_nomoper_comp = mapa_cols_ht_a_comp.get('NOM/Oper', 2)
-
                 # Copia estricta de las filas multinivel de encabezado (Filas 1 a 4) desde la Hoja HT
                 for col_ht_idx, col_c_idx in mapa_cols_ht_a_comp.items():
                     if col_ht_idx == 'NOM/Oper':
@@ -783,7 +781,7 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                     bottom=Side(style=c_orig.border.bottom.style, color=c_orig.border.bottom.color) if c_orig.border.bottom else None
                                 )
 
-                # Carga y mapeo del reporte operativo
+                # Mapeo avanzado y dinámico del Reporte Operativo por Fecha
                 cols_op_map = {str(c).strip().lower(): c for c in df_operativo.columns}
                 col_id_op = next((orig for k, orig in cols_op_map.items() if 'identificador' in k or 'cedula' in k or 'id' in k), None)
                 col_conc_op = next((orig for k, orig in cols_op_map.items() if 'concepto' in k), None)
@@ -793,8 +791,19 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                 if col_conc_op:
                     df_operativo['_conc_clean'] = df_operativo[col_conc_op].astype(str).str.strip().str.lower()
 
-                fill_operativo = PatternFill(fill_type="solid", fgColor="205867")
-                font_operativo = Font(name="Arial", size=9, color="FFFFFF", bold=True)
+                # Detección de columnas que son fechas dentro del Reporte Operativo
+                mapa_fechas_op = {}
+                for orig_col in df_operativo.columns:
+                    try:
+                        f_parsed = pd.to_datetime(orig_col, errors='coerce')
+                        if pd.notna(f_parsed):
+                            mapa_fechas_op[f_parsed.normalize()] = orig_col
+                    except:
+                        pass
+
+                # Color de resalte amarillo claro corporativo para la fila de Operativo
+                fill_operativo = PatternFill(fill_type="solid", fgColor="FFFF99")
+                font_operativo = Font(name="Arial", size=9, color="000000", bold=True)
 
                 fila_comp = FILA_ENCABEZADO + 1
 
@@ -836,13 +845,30 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                             c_dest.value = "Operativo"
                             c_dest.alignment = Alignment(horizontal="center", vertical="center")
                         elif col_ht_idx == col_periodo_libro3:
-                            c_dest.value = periodo
+                            c_dest.value = periodo.upper()
                         elif col_ht_idx == col_id_libro3:
                             c_dest.value = id_str
                         elif col_nombre_libro3 and col_ht_idx == col_nombre_libro3:
                             c_dest.value = nombre_emp
                         elif col_ht_idx == col_concepto_libro3:
                             c_dest.value = conc_libro3
+                        elif isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS:
+                            # CRUCE EXACTO POR FECHA + IDENTIFICADOR + CONCEPTO
+                            fecha_header_val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value
+                            if not row_op_match.empty and fecha_header_val:
+                                try:
+                                    dt_header = pd.Timestamp(fecha_header_val).normalize()
+                                    col_op_target = mapa_fechas_op.get(dt_header)
+                                    if col_op_target and col_op_target in row_op_match.columns:
+                                        val_op_fecha = row_op_match.iloc[0][col_op_target]
+                                        if pd.notna(val_op_fecha) and str(val_op_fecha).strip() not in ("", "nan", "None", "0"):
+                                            try:
+                                                c_dest.value = round(float(val_op_fecha), 2)
+                                                c_dest.number_format = '#,##0.00'
+                                            except:
+                                                c_dest.value = str(val_op_fecha).strip()
+                                except:
+                                    pass
                         else:
                             nombre_encabezado = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value
                             if not row_op_match.empty and nombre_encabezado:

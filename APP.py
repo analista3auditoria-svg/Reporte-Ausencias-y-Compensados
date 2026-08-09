@@ -269,24 +269,31 @@ def limpiar_id_a_texto(valor):
 # ── Paso 1: Carga de Archivos ─────────────────────────────────────────────
 st.header("📁 1. Carga de Archivos Base")
 
-col_file1, col_file2 = st.columns(2)
+col_file1, col_file2, col_file3 = st.columns(3)
 with col_file1:
     archivo_cargado = st.file_uploader("Subir plantilla de Asistencia (.xlsx)", type=["xlsx"])
 with col_file2:
     archivo_htcc = st.file_uploader("Subir plantilla de Consolidación HTCC (.xlsx)", type=["xlsx"])
+with col_file3:
+    archivo_operativo = st.file_uploader("Subir Reporte Operativo (.xlsx)", type=["xlsx"])
 
-if archivo_cargado is not None and archivo_htcc is not None:
+if archivo_cargado is not None and archivo_htcc is not None and archivo_operativo is not None:
     xl = pd.ExcelFile(archivo_cargado)
     hojas_disponibles = xl.sheet_names
     
     xl_htcc = pd.ExcelFile(archivo_htcc)
     hojas_htcc = xl_htcc.sheet_names
+
+    xl_operativo = pd.ExcelFile(archivo_operativo)
+    hojas_operativo = xl_operativo.sheet_names
     
-    col_sheet1, col_sheet2 = st.columns(2)
+    col_sheet1, col_sheet2, col_sheet3 = st.columns(3)
     with col_sheet1:
         HOJA_ENTRADA = st.selectbox("Seleccione la hoja de marcación:", hojas_disponibles)
     with col_sheet2:
         HOJA_LIBRO3 = st.selectbox("Seleccione la hoja de destino en HTCC:", hojas_htcc)
+    with col_sheet3:
+        HOJA_OPERATIVO = st.selectbox("Seleccione la hoja del reporte operativo:", hojas_operativo)
     
     # ── Paso 2: Parámetros de Fechas ─────────────────────────────────────────
     st.header("📅 2. Parámetros de Filtrado y Fechas")
@@ -307,6 +314,9 @@ if archivo_cargado is not None and archivo_htcc is not None:
                 # Carga de datos origen
                 df_origen = pd.read_excel(archivo_cargado, sheet_name=HOJA_ENTRADA)
                 df = df_origen.copy()
+                
+                # Carga de reporte operativo
+                df_operativo = pd.read_excel(archivo_operativo, sheet_name=HOJA_OPERATIVO)
                 
                 # ── Lógica Robusta para Extraer / Construir la columna Nombre ──
                 def extraer_nombre_limpio(dataframe):

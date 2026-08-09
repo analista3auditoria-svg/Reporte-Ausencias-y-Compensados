@@ -652,7 +652,7 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     if periodo_val and id_val and conc_val and id_val not in ("None", "nan", ""):
                         indice_filas[(periodo_val, id_val, conc_val)] = fila_num
                         if id_val and nom_val:
-                            mapa_nombres_ht[id_val] = nom_val  # <--- CORREGIDO: id_val en lugar de id_str
+                            mapa_nombres_ht[id_val] = nom_val
 
                 for _, fila_long in df_long.iterrows():
                     id_str = fila_long["Identificador"]
@@ -726,7 +726,7 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                 # ── CONSTRUCCIÓN DE LA HOJA 'Comparaciones' EXACTA A 'HT' ──────────────────────
                 ws_comp = wb_htcc.create_sheet('Comparaciones')
                 
-                # Copia de los encabezados multinivel exactos (Filas 1 a 4) de la Hoja HT
+                # Copia segura de los encabezados multinivel exactos (Filas 1 a 4) de la Hoja HT
                 for c_idx in range(1, ws_htcc.max_column + 1):
                     for r_idx in range(1, FILA_ENCABEZADO + 1):
                         val = ws_htcc.cell(row=r_idx, column=c_idx).value
@@ -736,7 +736,15 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                             c_dest.font = Font(name=c_orig.font.name, size=c_orig.font.size, bold=c_orig.font.bold, color=c_orig.font.color)
                             c_dest.fill = PatternFill(fill_type=c_orig.fill.fill_type, fgColor=c_orig.fill.fgColor)
                             c_dest.alignment = Alignment(horizontal=c_orig.alignment.horizontal, vertical=c_orig.alignment.vertical)
-                            c_dest.border = c_orig.border
+                            
+                            # Copia segura de bordes para evitar 'StyleProxy' TypeError
+                            if c_orig.border:
+                                c_dest.border = Border(
+                                    left=Side(style=c_orig.border.left.style, color=c_orig.border.left.color) if c_orig.border.left else None,
+                                    right=Side(style=c_orig.border.right.style, color=c_orig.border.right.color) if c_orig.border.right else None,
+                                    top=Side(style=c_orig.border.top.style, color=c_orig.border.top.color) if c_orig.border.top else None,
+                                    bottom=Side(style=c_orig.border.bottom.style, color=c_orig.border.bottom.color) if c_orig.border.bottom else None
+                                )
 
                 # Carga y mapeo del reporte operativo
                 cols_op_map = {str(c).strip().lower(): c for c in df_operativo.columns}

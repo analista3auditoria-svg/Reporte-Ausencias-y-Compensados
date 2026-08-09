@@ -797,6 +797,11 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     mapa_cols_ht_a_comp[col_ht_idx] = col_comp_idx
                     col_comp_idx += 1
 
+                # Localizar la columna "Cantidad" en ws_comp para ajustar la fórmula de Diferencia
+                col_cant_ht_idx = col_cantidad_libro3 if col_cantidad_libro3 else 7
+                col_cant_comp_idx = mapa_cols_ht_a_comp.get(col_cant_ht_idx, 8)
+                col_cant_comp_letra = get_column_letter(col_cant_comp_idx)
+
                 # Copia estricta de las filas multinivel de encabezado (Filas 1 a 4) desde la Hoja HT
                 for col_ht_idx, col_c_idx in mapa_cols_ht_a_comp.items():
                     if col_ht_idx == 'NOM/Oper':
@@ -918,6 +923,15 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                     letra_fin = get_column_letter(col_fin_comp)
                                     c_op.value = f"=SUM({letra_ini}{fila_op_idx}:{letra_fin}{fila_op_idx})"
                                     c_op.number_format = '#,##0.00'
+                        elif col_ht_idx == COL_DIF_IDX:
+                            # FÓRMULA DE DIFERENCIA TOMANDO SIEMPRE LA COLUMNA CANTIDAD CORRECTA
+                            col_tot_comp_idx = mapa_cols_ht_a_comp.get(COL_TOTAL_IDX)
+                            if col_tot_comp_idx:
+                                letra_col_total = get_column_letter(col_tot_comp_idx)
+                                c_nom.value = f"=ROUND({col_cant_comp_letra}{fila_nom_idx}-{letra_col_total}{fila_nom_idx},0)"
+                                c_nom.number_format = '#,##0.00'
+                                c_op.value = f"=ROUND({col_cant_comp_letra}{fila_op_idx}-{letra_col_total}{fila_op_idx},0)"
+                                c_op.number_format = '#,##0.00'
                         elif isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS:
                             fecha_header_val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value
                             dt_header = obtener_dt_fecha(fecha_header_val)
@@ -949,9 +963,10 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                     except:
                                         c_op.value = str(val_operativo_encontrado).strip()
 
-                    # --- 2. SEGUNDO PASO: COMPARAR FECHAS Y APLICAR COLOR ROJO SI HAY DIFERENCIAS ---
+                    # --- 2. SEGUNDO PASO: COMPARAR ÚNICAMENTE COLUMNAS DE FECHA Y APLICAR COLOR ROJO SI HAY DIFERENCIAS ---
                     for col_ht_idx, col_c_idx in mapa_cols_ht_a_comp.items():
-                        if isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS:
+                        # Excluir Total y Diferencia del resalte rojo automático
+                        if isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS and col_ht_idx not in (COL_TOTAL_IDX, COL_DIF_IDX):
                             fecha_header_val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value
                             dt_header = obtener_dt_fecha(fecha_header_val)
                             

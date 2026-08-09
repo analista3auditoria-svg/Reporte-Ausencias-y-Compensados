@@ -610,12 +610,13 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                 COL_INICIO_FECHAS = 12
 
                 # ── Detección Dinámica de Columnas Clave en HTCC ──
-                col_periodo_libro3 = col_id_libro3 = col_concepto_libro3 = col_cantidad_libro3 = None
+                col_periodo_libro3 = col_id_libro3 = col_concepto_libro3 = col_cantidad_libro3 = col_nombre_libro3 = None
                 for cell in ws_htcc[FILA_ENCABEZADO]:
                     if cell.value is None: continue
                     val = str(cell.value).strip().lower()
                     if val == "periodo": col_periodo_libro3 = cell.column
                     if "identificador" in val: col_id_libro3 = cell.column
+                    if val == "nombre": col_nombre_libro3 = cell.column
                     if "nombre concepto" in val: col_concepto_libro3 = cell.column
                     if val == "cantidad": col_cantidad_libro3 = cell.column
 
@@ -639,15 +640,19 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                 COL_DIF_IDX = COL_TOTAL_IDX + 1
 
                 indice_filas = {}
+                mapa_nombres_ht = {}
                 for row in ws_htcc.iter_rows(min_row=FILA_ENCABEZADO + 1):
-                    periodo_val = id_val = conc_val = None
+                    periodo_val = id_val = conc_val = nom_val = None
                     fila_num = row[0].row
                     for cell in row:
                         if cell.column == col_periodo_libro3: periodo_val = str(cell.value).strip().upper() if cell.value else None
                         if cell.column == col_id_libro3: id_val = limpiar_id_a_texto(cell.value)
+                        if col_nombre_libro3 and cell.column == col_nombre_libro3: nom_val = str(cell.value).strip() if cell.value else None
                         if cell.column == col_concepto_libro3: conc_val = str(cell.value).strip().lower() if cell.value else None
                     if periodo_val and id_val and conc_val and id_val not in ("None", "nan", ""):
                         indice_filas[(periodo_val, id_val, conc_val)] = fila_num
+                        if id_val and nom_val:
+                            mapa_nombres_ht[id_str] = nom_val
 
                 for _, fila_long in df_long.iterrows():
                     id_str = fila_long["Identificador"]
@@ -718,10 +723,10 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     c_dif = ws_htcc.cell(row=fila_excel, column=COL_DIF_IDX, value=formula_dif)
                     c_dif.number_format, c_dif.font, c_dif.alignment, c_dif.fill = '#,##0.00', Font(name="Arial", size=9, bold=True), Alignment(horizontal="center", vertical="center"), PatternFill(fill_type="solid", fgColor="FFFFFF")
 
-                # ── CONSTRUCCIÓN DE LA NUEVA HOJA 'Comparaciones' ──────────────────────
+                # ── CONSTRUCCIÓN DE LA HOJA 'Comparaciones' EXACTA A 'HT' ──────────────────────
                 ws_comp = wb_htcc.create_sheet('Comparaciones')
                 
-                # Copiar estructura del encabezado desde ws_htcc
+                # Copia de los encabezados multinivel exactos (Filas 1 a 4) de la Hoja HT
                 for c_idx in range(1, ws_htcc.max_column + 1):
                     for r_idx in range(1, FILA_ENCABEZADO + 1):
                         val = ws_htcc.cell(row=r_idx, column=c_idx).value
@@ -731,33 +736,41 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                             c_dest.font = Font(name=c_orig.font.name, size=c_orig.font.size, bold=c_orig.font.bold, color=c_orig.font.color)
                             c_dest.fill = PatternFill(fill_type=c_orig.fill.fill_type, fgColor=c_orig.fill.fgColor)
                             c_dest.alignment = Alignment(horizontal=c_orig.alignment.horizontal, vertical=c_orig.alignment.vertical)
+                            c_dest.border = c_orig.border
 
-                # Mapeo del reporte operativo
+                # Carga y mapeo del reporte operativo
                 cols_op_map = {str(c).strip().lower(): c for c in df_operativo.columns}
                 col_id_op = next((orig for k, orig in cols_op_map.items() if 'identificador' in k or 'cedula' in k or 'id' in k), None)
                 col_conc_op = next((orig for k, orig in cols_op_map.items() if 'concepto' in k), None)
+                col_nom_op = next((orig for k, orig in cols_op_map.items() if 'nombre' in k), None)
                 
                 if col_id_op:
                     df_operativo['_id_clean'] = limpiar_id_a_texto(df_operativo[col_id_op])
                 if col_conc_op:
                     df_operativo['_conc_clean'] = df_operativo[col_conc_op].astype(str).str.strip().str.lower()
 
-                # Estilo para fila Operativo (Azul petrolizado)
                 fill_operativo = PatternFill(fill_type="solid", fgColor="205867")
                 font_operativo = Font(name="Arial", size=9, color="FFFFFF", bold=True)
 
                 fila_comp = FILA_ENCABEZADO + 1
 
                 for (periodo, id_str, conc_libro3), fila_excel in indice_filas.items():
+                    # Obtener nombre del colaborador
+                    nombre_emp = ws_htcc.cell(row=fila_excel, column=col_nombre_libro3).value if col_nombre_libro3 else mapa_nombres_ht.get(id_str, "")
+
                     # --- FILA 1: NOMINA ---
                     for c_idx in range(1, ws_htcc.max_column + 1):
                         val_orig = ws_htcc.cell(row=fila_excel, column=c_idx).value
                         c_dest = ws_comp.cell(row=fila_comp, column=c_idx, value=val_orig)
                         c_dest.alignment = Alignment(horizontal="center" if c_idx >= COL_INICIO_FECHAS else "left", vertical="center")
                         c_dest.border = brd
-                        if c_idx == 2:  # Columna N/OP
+                        if c_idx == 2:
                             c_dest.value = "Nomina"
-                    
+                        elif c_idx == col_id_libro3:
+                            c_dest.value = id_str
+                        elif col_nombre_libro3 and c_idx == col_nombre_libro3:
+                            c_dest.value = nombre_emp
+
                     fila_comp += 1
 
                     # --- FILA 2: OPERATIVO ---
@@ -778,10 +791,11 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                             c_dest.value = "Operativo"
                         elif c_idx == col_id_libro3:
                             c_dest.value = id_str
+                        elif col_nombre_libro3 and c_idx == col_nombre_libro3:
+                            c_dest.value = nombre_emp
                         elif c_idx == col_concepto_libro3:
                             c_dest.value = conc_libro3
                         else:
-                            # Buscar si en el dataframe operativo existe la columna correspondiente
                             nombre_encabezado = ws_htcc.cell(row=FILA_ENCABEZADO, column=c_idx).value
                             if not row_op_match.empty and nombre_encabezado:
                                 col_mat = next((orig for k, orig in cols_op_map.items() if str(nombre_encabezado).strip().lower() in k), None)
@@ -789,6 +803,8 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                     c_dest.value = row_op_match.iloc[0][col_mat]
 
                     fila_comp += 1
+
+                ws_comp.freeze_panes, ws_comp.auto_filter.ref = f"A{FILA_ENCABEZADO + 1}", f"A{FILA_ENCABEZADO}:{get_column_letter(ws_comp.max_column)}{ws_comp.max_row}"
 
                 htcc_buffer = io.BytesIO()
                 wb_htcc.save(htcc_buffer)

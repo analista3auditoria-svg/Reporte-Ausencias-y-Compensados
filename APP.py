@@ -652,7 +652,7 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     if periodo_val and id_val and conc_val and id_val not in ("None", "nan", ""):
                         indice_filas[(periodo_val, id_val, conc_val)] = fila_num
                         if id_val and nom_val:
-                            mapa_nombres_ht[id_str] = nom_val
+                            mapa_nombres_ht[id_val] = nom_val  # <--- CORREGIDO: id_val en lugar de id_str
 
                 for _, fila_long in df_long.iterrows():
                     id_str = fila_long["Identificador"]

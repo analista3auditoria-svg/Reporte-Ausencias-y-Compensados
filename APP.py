@@ -898,6 +898,17 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                             c_dest.value = nombre_emp
                         elif col_ht_idx == col_concepto_libro3:
                             c_dest.value = conc_libro3
+                        elif col_ht_idx == COL_TOTAL_IDX:
+                            # FÓRMULA DE SUMA DINÁMICA DE LA FILA OPERATIVO AJUSTADA A SU PERIODO
+                            cols_periodo = cols_por_periodo.get(periodo.upper(), [])
+                            if cols_periodo:
+                                col_ini_comp = mapa_cols_ht_a_comp.get(min(cols_periodo))
+                                col_fin_comp = mapa_cols_ht_a_comp.get(max(cols_periodo))
+                                if col_ini_comp and col_fin_comp:
+                                    letra_ini = get_column_letter(col_ini_comp)
+                                    letra_fin = get_column_letter(col_fin_comp)
+                                    c_dest.value = f"=SUM({letra_ini}{fila_comp}:{letra_fin}{fila_comp})"
+                                    c_dest.number_format = '#,##0.00'
                         elif isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS:
                             # EVALUAR SI LA FECHA DE LA COLUMNA CORRESPONDE AL PERIODO DE LA FILA
                             fecha_header_val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value

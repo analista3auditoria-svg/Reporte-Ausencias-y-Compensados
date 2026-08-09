@@ -288,6 +288,17 @@ def fecha_a_clave_corta(val_fecha):
         return f"{int(m.group(1))}-{m.group(2)}"
     return s
 
+def obtener_dt_fecha(val_fecha):
+    if pd.isna(val_fecha) or val_fecha is None: return None
+    if isinstance(val_fecha, pd.Timestamp):
+        return val_fecha.normalize()
+    try:
+        d = pd.to_datetime(val_fecha, errors='coerce')
+        if pd.notna(d):
+            return d.normalize()
+    except: pass
+    return None
+
 # ── Paso 1: Carga de Archivos ─────────────────────────────────────────────
 st.header("📁 1. Carga de Archivos Base")
 
@@ -843,6 +854,10 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                 for (periodo, id_str, conc_libro3), fila_excel in indice_filas.items():
                     nombre_emp = ws_htcc.cell(row=fila_excel, column=col_nombre_libro3).value if col_nombre_libro3 else mapa_nombres_ht.get(id_str, "")
 
+                    # Rango de fechas permitido para este periodo
+                    periodo_cap = periodo.title()
+                    rango_periodo = PERIODOS.get(periodo_cap)
+
                     # --- FILA 1: NOMINA ---
                     for col_ht_idx, col_c_idx in mapa_cols_ht_a_comp.items():
                         if col_ht_idx == 'NOM/Oper':
@@ -884,30 +899,39 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                         elif col_ht_idx == col_concepto_libro3:
                             c_dest.value = conc_libro3
                         elif isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS:
-                            # OBTENER FECHA DEL ENCABEZADO Y EXTRAER VALOR OPERATIVO
+                            # EVALUAR SI LA FECHA DE LA COLUMNA CORRESPONDE AL PERIODO DE LA FILA
                             fecha_header_val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value
-                            f_clave_header = fecha_a_clave_corta(fecha_header_val)
+                            dt_header = obtener_dt_fecha(fecha_header_val)
                             
-                            val_operativo_encontrado = None
-                            if f_clave_header:
-                                # 1. Buscar coincidencia exacta por ID + Concepto Normalizado + Fecha Corta
-                                val_operativo_encontrado = dict_operativo_cruce.get((id_str, conc_libro3_norm, f_clave_header))
+                            esta_en_periodo = True
+                            if dt_header and rango_periodo:
+                                inicio_per, fin_per = rango_periodo
+                                esta_en_periodo = (inicio_per <= dt_header <= fin_per)
 
-                                # 2. Si no encuentra, intentar con la etiqueta legible de MAPA_CONCEPTOS
-                                if val_operativo_encontrado is None:
-                                    for key_etiqueta, val_mapeado in MAPA_CONCEPTOS.items():
-                                        if val_mapeado.lower() == conc_libro3_norm:
-                                            key_norm = normalizar_concepto_txt(key_etiqueta)
-                                            val_operativo_encontrado = dict_operativo_cruce.get((id_str, key_norm, f_clave_header))
-                                            if val_operativo_encontrado is not None:
-                                                break
+                            # SOLO CRUZAR VALORES SI LA FECHA PERTENECE AL RANGO DEL PERIODO DE LA FILA
+                            if esta_en_periodo:
+                                f_clave_header = fecha_a_clave_corta(fecha_header_val)
+                                val_operativo_encontrado = None
+                                
+                                if f_clave_header:
+                                    # 1. Buscar coincidencia exacta por ID + Concepto Normalizado + Fecha Corta
+                                    val_operativo_encontrado = dict_operativo_cruce.get((id_str, conc_libro3_norm, f_clave_header))
 
-                            if val_operativo_encontrado is not None and str(val_operativo_encontrado).strip() not in ("", "nan", "None"):
-                                try:
-                                    c_dest.value = round(float(val_operativo_encontrado), 2)
-                                    c_dest.number_format = '#,##0.00'
-                                except:
-                                    c_dest.value = str(val_operativo_encontrado).strip()
+                                    # 2. Buscar por etiquetas alternativas de MAPA_CONCEPTOS
+                                    if val_operativo_encontrado is None:
+                                        for key_etiqueta, val_mapeado in MAPA_CONCEPTOS.items():
+                                            if val_mapeado.lower() == conc_libro3_norm:
+                                                key_norm = normalizar_concepto_txt(key_etiqueta)
+                                                val_operativo_encontrado = dict_operativo_cruce.get((id_str, key_norm, f_clave_header))
+                                                if val_operativo_encontrado is not None:
+                                                    break
+
+                                if val_operativo_encontrado is not None and str(val_operativo_encontrado).strip() not in ("", "nan", "None"):
+                                    try:
+                                        c_dest.value = round(float(val_operativo_encontrado), 2)
+                                        c_dest.number_format = '#,##0.00'
+                                    except:
+                                        c_dest.value = str(val_operativo_encontrado).strip()
 
                     fila_comp += 1
 

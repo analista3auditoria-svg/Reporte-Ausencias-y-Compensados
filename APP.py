@@ -921,10 +921,14 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                 if col_ini_comp and col_fin_comp:
                                     letra_ini = get_column_letter(col_ini_comp)
                                     letra_fin = get_column_letter(col_fin_comp)
+                                    # Corregido: Referencia explícita a la fila de Nómina y a la fila de Operativo
+                                    c_nom.value = f"=SUM({letra_ini}{fila_nom_idx}:{letra_fin}{fila_nom_idx})"
+                                    c_nom.number_format = '#,##0.00'
+
                                     c_op.value = f"=SUM({letra_ini}{fila_op_idx}:{letra_fin}{fila_op_idx})"
                                     c_op.number_format = '#,##0.00'
                         elif col_ht_idx == COL_DIF_IDX:
-                            # FÓRMULA DE DIFERENCIA TOMANDO SIEMPRE LA COLUMNA CANTIDAD CORRECTA
+                            # FÓRMULA DE DIFERENCIA REFERENCIANDO SU PROPIA FILA EN COMPARACIONES
                             col_tot_comp_idx = mapa_cols_ht_a_comp.get(COL_TOTAL_IDX)
                             if col_tot_comp_idx:
                                 letra_col_total = get_column_letter(col_tot_comp_idx)

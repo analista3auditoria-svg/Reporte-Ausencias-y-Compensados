@@ -723,34 +723,47 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     c_dif = ws_htcc.cell(row=fila_excel, column=COL_DIF_IDX, value=formula_dif)
                     c_dif.number_format, c_dif.font, c_dif.alignment, c_dif.fill = '#,##0.00', Font(name="Arial", size=9, bold=True), Alignment(horizontal="center", vertical="center"), PatternFill(fill_type="solid", fgColor="FFFFFF")
 
-                # ── CONSTRUCCIÓN DE LA HOJA 'Comparaciones' EXACTA A 'HT' ──────────────────────
+                # ── CONSTRUCCIÓN DE LA HOJA 'Comparaciones' CON ESTRUCTURA EXACTA ──────────────
                 ws_comp = wb_htcc.create_sheet('Comparaciones')
+
+                # Re-mapeo dinámico para insertar NOM/Oper en columna B y Identificador en Columna C
+                # A: PERIODO, B: NOM/Oper, C: Identificador, D: Nombre, etc.
                 
-                # Copia segura de los encabezados multinivel exactos (Filas 1 a 4) de la Hoja HT
-                for c_idx in range(1, ws_htcc.max_column + 1):
-                    for r_idx in range(1, FILA_ENCABEZADO + 1):
-                        val = ws_htcc.cell(row=r_idx, column=c_idx).value
-                        c_dest = ws_comp.cell(row=r_idx, column=c_idx, value=val)
-                        c_orig = ws_htcc.cell(row=r_idx, column=c_idx)
+                # Copy multi-level headers safely inserting B="NOM/Oper" and C="Identificador"
+                for r_idx in range(1, FILA_ENCABEZADO + 1):
+                    # Columna A (PERIODO)
+                    c_orig = ws_htcc.cell(row=r_idx, column=1)
+                    c_dest = ws_comp.cell(row=r_idx, column=1, value=c_orig.value)
+                    
+                    # Columna B (NOM/Oper)
+                    val_b = "NOM/Oper" if r_idx == FILA_ENCABEZADO else ""
+                    c_dest_b = ws_comp.cell(row=r_idx, column=2, value=val_b)
+                    
+                    # Columna C (Identificador)
+                    val_c = "Identificador" if r_idx == FILA_ENCABEZADO else ""
+                    c_dest_c = ws_comp.cell(row=r_idx, column=3, value=val_c)
+
+                    # Columna D en adelante (Copia desplazada de HT desde columna 3)
+                    for c_orig_idx in range(3, ws_htcc.max_column + 1):
+                        c_dest_idx = c_orig_idx + 1 # Desplazamiento +1 por insertar NOM/Oper
+                        c_cell_orig = ws_htcc.cell(row=r_idx, column=c_orig_idx)
+                        ws_comp.cell(row=r_idx, column=c_dest_idx, value=c_cell_orig.value)
+
+                # Aplicar estilos a las 4 filas de encabezado creadas
+                for r_idx in range(1, FILA_ENCABEZADO + 1):
+                    for c_idx in range(1, ws_htcc.max_column + 2):
+                        c_dest = ws_comp.cell(row=r_idx, column=c_idx)
+                        col_ref = c_idx - 1 if c_idx > 2 else 1
+                        c_orig = ws_htcc.cell(row=r_idx, column=col_ref)
                         if c_orig.has_style:
-                            c_dest.font = Font(name=c_orig.font.name, size=c_orig.font.size, bold=c_orig.font.bold, color=c_orig.font.color)
+                            c_dest.font = Font(name=c_orig.font.name, size=c_orig.font.size, bold=True, color=c_orig.font.color)
                             c_dest.fill = PatternFill(fill_type=c_orig.fill.fill_type, fgColor=c_orig.fill.fgColor)
-                            c_dest.alignment = Alignment(horizontal=c_orig.alignment.horizontal, vertical=c_orig.alignment.vertical)
-                            
-                            # Copia segura de bordes para evitar 'StyleProxy' TypeError
-                            if c_orig.border:
-                                c_dest.border = Border(
-                                    left=Side(style=c_orig.border.left.style, color=c_orig.border.left.color) if c_orig.border.left else None,
-                                    right=Side(style=c_orig.border.right.style, color=c_orig.border.right.color) if c_orig.border.right else None,
-                                    top=Side(style=c_orig.border.top.style, color=c_orig.border.top.color) if c_orig.border.top else None,
-                                    bottom=Side(style=c_orig.border.bottom.style, color=c_orig.border.bottom.color) if c_orig.border.bottom else None
-                                )
+                            c_dest.alignment = Alignment(horizontal="center", vertical="center")
 
                 # Carga y mapeo del reporte operativo
                 cols_op_map = {str(c).strip().lower(): c for c in df_operativo.columns}
                 col_id_op = next((orig for k, orig in cols_op_map.items() if 'identificador' in k or 'cedula' in k or 'id' in k), None)
                 col_conc_op = next((orig for k, orig in cols_op_map.items() if 'concepto' in k), None)
-                col_nom_op = next((orig for k, orig in cols_op_map.items() if 'nombre' in k), None)
                 
                 if col_id_op:
                     df_operativo['_id_clean'] = limpiar_id_a_texto(df_operativo[col_id_op])
@@ -763,21 +776,20 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                 fila_comp = FILA_ENCABEZADO + 1
 
                 for (periodo, id_str, conc_libro3), fila_excel in indice_filas.items():
-                    # Obtener nombre del colaborador
                     nombre_emp = ws_htcc.cell(row=fila_excel, column=col_nombre_libro3).value if col_nombre_libro3 else mapa_nombres_ht.get(id_str, "")
 
                     # --- FILA 1: NOMINA ---
-                    for c_idx in range(1, ws_htcc.max_column + 1):
-                        val_orig = ws_htcc.cell(row=fila_excel, column=c_idx).value
-                        c_dest = ws_comp.cell(row=fila_comp, column=c_idx, value=val_orig)
-                        c_dest.alignment = Alignment(horizontal="center" if c_idx >= COL_INICIO_FECHAS else "left", vertical="center")
+                    # A: Periodo, B: Nomina, C: Identificador (id_str), D: Nombre
+                    ws_comp.cell(row=fila_comp, column=1, value=periodo).alignment = Alignment(horizontal="center", vertical="center")
+                    ws_comp.cell(row=fila_comp, column=2, value="Nomina").alignment = Alignment(horizontal="center", vertical="center")
+                    ws_comp.cell(row=fila_comp, column=3, value=id_str).alignment = Alignment(horizontal="center", vertical="center")
+                    
+                    for c_orig_idx in range(3, ws_htcc.max_column + 1):
+                        val_orig = ws_htcc.cell(row=fila_excel, column=c_orig_idx).value
+                        c_dest_idx = c_orig_idx + 1
+                        c_dest = ws_comp.cell(row=fila_comp, column=c_dest_idx, value=val_orig)
+                        c_dest.alignment = Alignment(horizontal="center" if c_orig_idx >= COL_INICIO_FECHAS else "left", vertical="center")
                         c_dest.border = brd
-                        if c_idx == 2:
-                            c_dest.value = "Nomina"
-                        elif c_idx == col_id_libro3:
-                            c_dest.value = id_str
-                        elif col_nombre_libro3 and c_idx == col_nombre_libro3:
-                            c_dest.value = nombre_emp
 
                     fila_comp += 1
 
@@ -786,25 +798,28 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     if col_id_op and col_conc_op:
                         row_op_match = df_operativo[(df_operativo['_id_clean'] == id_str) & (df_operativo['_conc_clean'] == conc_libro3)]
 
-                    for c_idx in range(1, ws_htcc.max_column + 1):
-                        c_dest = ws_comp.cell(row=fila_comp, column=c_idx)
-                        c_dest.fill = fill_operativo
-                        c_dest.font = font_operativo
-                        c_dest.border = brd
-                        c_dest.alignment = Alignment(horizontal="center" if c_idx >= COL_INICIO_FECHAS else "left", vertical="center")
+                    ws_comp.cell(row=fila_comp, column=1, value=periodo)
+                    ws_comp.cell(row=fila_comp, column=2, value="Operativo")
+                    ws_comp.cell(row=fila_comp, column=3, value=id_str)
 
-                        if c_idx == 1:
-                            c_dest.value = periodo
-                        elif c_idx == 2:
-                            c_dest.value = "Operativo"
-                        elif c_idx == col_id_libro3:
-                            c_dest.value = id_str
-                        elif col_nombre_libro3 and c_idx == col_nombre_libro3:
+                    # Formatear columnas A, B, C de la fila Operativo
+                    for c_k in range(1, 4):
+                        c_k_cell = ws_comp.cell(row=fila_comp, column=c_k)
+                        c_k_cell.fill, c_k_cell.font, c_k_cell.border = fill_operativo, font_operativo, brd
+                        c_k_cell.alignment = Alignment(horizontal="center", vertical="center")
+
+                    for c_orig_idx in range(3, ws_htcc.max_column + 1):
+                        c_dest_idx = c_orig_idx + 1
+                        c_dest = ws_comp.cell(row=fila_comp, column=c_dest_idx)
+                        c_dest.fill, c_dest.font, c_dest.border = fill_operativo, font_operativo, brd
+                        c_dest.alignment = Alignment(horizontal="center" if c_orig_idx >= COL_INICIO_FECHAS else "left", vertical="center")
+
+                        if col_nombre_libro3 and c_orig_idx == col_nombre_libro3:
                             c_dest.value = nombre_emp
-                        elif c_idx == col_concepto_libro3:
+                        elif c_orig_idx == col_concepto_libro3:
                             c_dest.value = conc_libro3
                         else:
-                            nombre_encabezado = ws_htcc.cell(row=FILA_ENCABEZADO, column=c_idx).value
+                            nombre_encabezado = ws_htcc.cell(row=FILA_ENCABEZADO, column=c_orig_idx).value
                             if not row_op_match.empty and nombre_encabezado:
                                 col_mat = next((orig for k, orig in cols_op_map.items() if str(nombre_encabezado).strip().lower() in k), None)
                                 if col_mat and col_mat in row_op_match.columns:

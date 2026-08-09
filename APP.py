@@ -299,6 +299,20 @@ def obtener_dt_fecha(val_fecha):
     except: pass
     return None
 
+def valores_son_diferentes(v1, v2):
+    if (v1 is None or str(v1).strip() in ("", "None", "nan", "0", "0.0", "0,00")) and \
+       (v2 is None or str(v2).strip() in ("", "None", "nan", "0", "0.0", "0,00")):
+        return False
+    
+    try:
+        n1 = round(float(v1), 2) if v1 is not None else 0.0
+        n2 = round(float(v2), 2) if v2 is not None else 0.0
+        return abs(n1 - n2) > 0.01
+    except:
+        s1 = str(v1).strip().upper() if v1 is not None else ""
+        s2 = str(v2).strip().upper() if v2 is not None else ""
+        return s1 != s2
+
 # ── Paso 1: Carga de Archivos ─────────────────────────────────────────────
 st.header("📁 1. Carga de Archivos Base")
 
@@ -826,7 +840,6 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     df_op_calc['_id_clean'] = limpiar_id_a_texto(df_op_calc[col_id_op])
                     df_op_calc['_conc_norm'] = df_op_calc[col_conc_op].apply(normalizar_concepto_txt)
                     
-                    # Detectar columnas de fechas en el Reporte Operativo y estandarizarlas a clave corta (ej: "15-feb")
                     cols_fecha_op_map = {}
                     for c_col in df_op_calc.columns:
                         if c_col in ('_id_clean', '_conc_norm', col_id_op, col_conc_op):
@@ -835,7 +848,6 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                         if f_clave:
                             cols_fecha_op_map[c_col] = f_clave
 
-                    # Mapear datos operativos a un diccionario (ID_Clean, Concepto_Normalizado, Fecha_Corta) -> Valor
                     for _, row_op in df_op_calc.iterrows():
                         id_op_val = row_op['_id_clean']
                         conc_op_norm = row_op['_conc_norm']
@@ -845,61 +857,58 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                             if pd.notna(val_op) and str(val_op).strip() not in ("", "nan", "None"):
                                 dict_operativo_cruce[(id_op_val, conc_op_norm, f_clave)] = val_op
 
-                # Color de resalte amarillo claro corporativo para la fila de Operativo
+                # Estilos de resaltado
                 fill_operativo = PatternFill(fill_type="solid", fgColor="FFFF99")
                 font_operativo = Font(name="Arial", size=9, color="000000", bold=True)
+                
+                # Estilo de Alerta Roja por Diferencia entre Nómina y Operativo
+                fill_rojo_alerta = PatternFill(fill_type="solid", fgColor="FF0000")
+                font_rojo_alerta = Font(name="Arial", size=9, color="FFFFFF", bold=True)
 
                 fila_comp = FILA_ENCABEZADO + 1
 
                 for (periodo, id_str, conc_libro3), fila_excel in indice_filas.items():
                     nombre_emp = ws_htcc.cell(row=fila_excel, column=col_nombre_libro3).value if col_nombre_libro3 else mapa_nombres_ht.get(id_str, "")
 
-                    # Rango de fechas permitido para este periodo
                     periodo_cap = periodo.title()
                     rango_periodo = PERIODOS.get(periodo_cap)
 
-                    # --- FILA 1: NOMINA ---
-                    for col_ht_idx, col_c_idx in mapa_cols_ht_a_comp.items():
-                        if col_ht_idx == 'NOM/Oper':
-                            c_dest = ws_comp.cell(row=fila_comp, column=col_c_idx, value="Nomina")
-                            c_dest.alignment = Alignment(horizontal="center", vertical="center")
-                            c_dest.border = brd
-                            continue
+                    fila_nom_idx = fila_comp
+                    fila_op_idx = fila_comp + 1
 
-                        val_orig = ws_htcc.cell(row=fila_excel, column=col_ht_idx).value
-                        c_dest = ws_comp.cell(row=fila_comp, column=col_c_idx, value=val_orig)
-                        c_orig = ws_htcc.cell(row=fila_excel, column=col_ht_idx)
-                        
-                        if c_orig.has_style:
-                            c_dest.font = Font(name=c_orig.font.name, size=c_orig.font.size, bold=c_orig.font.bold, color=c_orig.font.color)
-                            c_dest.fill = PatternFill(fill_type=c_orig.fill.fill_type, fgColor=c_orig.fill.fgColor)
-                            c_dest.alignment = Alignment(horizontal="center" if col_ht_idx >= COL_INICIO_FECHAS else "left", vertical="center")
-                            c_dest.number_format = c_orig.number_format
-                            c_dest.border = brd
-
-                    fila_comp += 1
-
-                    # --- FILA 2: OPERATIVO ---
+                    # --- 1. PRIMER PASO: ESCRIBIR VALORES EN AMBAS FILAS (NOMINA Y OPERATIVO) ---
                     conc_libro3_norm = normalizar_concepto_txt(conc_libro3)
 
                     for col_ht_idx, col_c_idx in mapa_cols_ht_a_comp.items():
-                        c_dest = ws_comp.cell(row=fila_comp, column=col_c_idx)
-                        c_dest.fill, c_dest.font, c_dest.border = fill_operativo, font_operativo, brd
-                        c_dest.alignment = Alignment(horizontal="center" if isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS else "left", vertical="center")
+                        # Celda Nomina
+                        val_orig = ws_htcc.cell(row=fila_excel, column=col_ht_idx).value if col_ht_idx != 'NOM/Oper' else "Nomina"
+                        c_nom = ws_comp.cell(row=fila_nom_idx, column=col_c_idx, value=val_orig)
+                        c_orig = ws_htcc.cell(row=fila_excel, column=col_ht_idx) if col_ht_idx != 'NOM/Oper' else None
+                        
+                        if c_orig and c_orig.has_style:
+                            c_nom.font = Font(name=c_orig.font.name, size=c_orig.font.size, bold=c_orig.font.bold, color=c_orig.font.color)
+                            c_nom.fill = PatternFill(fill_type=c_orig.fill.fill_type, fgColor=c_orig.fill.fgColor)
+                            c_nom.alignment = Alignment(horizontal="center" if col_ht_idx >= COL_INICIO_FECHAS or col_ht_idx == 'NOM/Oper' else "left", vertical="center")
+                            c_nom.number_format = c_orig.number_format
+                            c_nom.border = brd
+
+                        # Celda Operativo
+                        c_op = ws_comp.cell(row=fila_op_idx, column=col_c_idx)
+                        c_op.fill, c_op.font, c_op.border = fill_operativo, font_operativo, brd
+                        c_op.alignment = Alignment(horizontal="center" if isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS else "left", vertical="center")
 
                         if col_ht_idx == 'NOM/Oper':
-                            c_dest.value = "Operativo"
-                            c_dest.alignment = Alignment(horizontal="center", vertical="center")
+                            c_op.value = "Operativo"
+                            c_op.alignment = Alignment(horizontal="center", vertical="center")
                         elif col_ht_idx == col_periodo_libro3:
-                            c_dest.value = periodo.upper()
+                            c_op.value = periodo.upper()
                         elif col_ht_idx == col_id_libro3:
-                            c_dest.value = id_str
+                            c_op.value = id_str
                         elif col_nombre_libro3 and col_ht_idx == col_nombre_libro3:
-                            c_dest.value = nombre_emp
+                            c_op.value = nombre_emp
                         elif col_ht_idx == col_concepto_libro3:
-                            c_dest.value = conc_libro3
+                            c_op.value = conc_libro3
                         elif col_ht_idx == COL_TOTAL_IDX:
-                            # FÓRMULA DE SUMA DINÁMICA DE LA FILA OPERATIVO AJUSTADA A SU PERIODO
                             cols_periodo = cols_por_periodo.get(periodo.upper(), [])
                             if cols_periodo:
                                 col_ini_comp = mapa_cols_ht_a_comp.get(min(cols_periodo))
@@ -907,10 +916,9 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                 if col_ini_comp and col_fin_comp:
                                     letra_ini = get_column_letter(col_ini_comp)
                                     letra_fin = get_column_letter(col_fin_comp)
-                                    c_dest.value = f"=SUM({letra_ini}{fila_comp}:{letra_fin}{fila_comp})"
-                                    c_dest.number_format = '#,##0.00'
+                                    c_op.value = f"=SUM({letra_ini}{fila_op_idx}:{letra_fin}{fila_op_idx})"
+                                    c_op.number_format = '#,##0.00'
                         elif isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS:
-                            # EVALUAR SI LA FECHA DE LA COLUMNA CORRESPONDE AL PERIODO DE LA FILA
                             fecha_header_val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value
                             dt_header = obtener_dt_fecha(fecha_header_val)
                             
@@ -919,16 +927,13 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                 inicio_per, fin_per = rango_periodo
                                 esta_en_periodo = (inicio_per <= dt_header <= fin_per)
 
-                            # SOLO CRUZAR VALORES SI LA FECHA PERTENECE AL RANGO DEL PERIODO DE LA FILA
                             if esta_en_periodo:
                                 f_clave_header = fecha_a_clave_corta(fecha_header_val)
                                 val_operativo_encontrado = None
                                 
                                 if f_clave_header:
-                                    # 1. Buscar coincidencia exacta por ID + Concepto Normalizado + Fecha Corta
                                     val_operativo_encontrado = dict_operativo_cruce.get((id_str, conc_libro3_norm, f_clave_header))
 
-                                    # 2. Buscar por etiquetas alternativas de MAPA_CONCEPTOS
                                     if val_operativo_encontrado is None:
                                         for key_etiqueta, val_mapeado in MAPA_CONCEPTOS.items():
                                             if val_mapeado.lower() == conc_libro3_norm:
@@ -939,12 +944,38 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
 
                                 if val_operativo_encontrado is not None and str(val_operativo_encontrado).strip() not in ("", "nan", "None"):
                                     try:
-                                        c_dest.value = round(float(val_operativo_encontrado), 2)
-                                        c_dest.number_format = '#,##0.00'
+                                        c_op.value = round(float(val_operativo_encontrado), 2)
+                                        c_op.number_format = '#,##0.00'
                                     except:
-                                        c_dest.value = str(val_operativo_encontrado).strip()
+                                        c_op.value = str(val_operativo_encontrado).strip()
 
-                    fila_comp += 1
+                    # --- 2. SEGUNDO PASO: COMPARAR FECHAS Y APLICAR COLOR ROJO SI HAY DIFERENCIAS ---
+                    for col_ht_idx, col_c_idx in mapa_cols_ht_a_comp.items():
+                        if isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS:
+                            fecha_header_val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value
+                            dt_header = obtener_dt_fecha(fecha_header_val)
+                            
+                            esta_en_periodo = True
+                            if dt_header and rango_periodo:
+                                inicio_per, fin_per = rango_periodo
+                                esta_en_periodo = (inicio_per <= dt_header <= fin_per)
+
+                            if esta_en_periodo:
+                                cell_nom = ws_comp.cell(row=fila_nom_idx, column=col_c_idx)
+                                cell_op = ws_comp.cell(row=fila_op_idx, column=col_c_idx)
+
+                                val_n = cell_nom.value
+                                val_o = cell_op.value
+
+                                # Si hay discrepancia entre Nomina y Operativo, pintar ambas celdas en ROJO
+                                if valores_son_diferentes(val_n, val_o):
+                                    cell_nom.fill = fill_rojo_alerta
+                                    cell_nom.font = font_rojo_alerta
+
+                                    cell_op.fill = fill_rojo_alerta
+                                    cell_op.font = font_rojo_alerta
+
+                    fila_comp += 2
 
                 ws_comp.freeze_panes, ws_comp.auto_filter.ref = f"A{FILA_ENCABEZADO + 1}", f"A{FILA_ENCABEZADO}:{get_column_letter(ws_comp.max_column)}{ws_comp.max_row}"
 

@@ -266,6 +266,28 @@ def limpiar_id_a_texto(valor):
     except:
         return s
 
+def normalizar_concepto_txt(texto):
+    if not texto: return ""
+    t = str(texto).strip().lower()
+    t = re.sub(r'\s+', ' ', t)
+    return t
+
+def fecha_a_clave_corta(val_fecha):
+    if pd.isna(val_fecha) or val_fecha is None: return None
+    if isinstance(val_fecha, (pd.Timestamp, pd.DatetimeIndex)):
+        return f"{val_fecha.day}-{MESES_ES[val_fecha.month]}"
+    try:
+        d = pd.to_datetime(val_fecha, errors='coerce')
+        if pd.notna(d):
+            return f"{d.day}-{MESES_ES[d.month]}"
+    except: pass
+    
+    s = str(val_fecha).strip().lower()
+    m = re.search(r'(\d{1,2})[-_\s/]+([a-z]{3})', s)
+    if m:
+        return f"{int(m.group(1))}-{m.group(2)}"
+    return s
+
 # ── Paso 1: Carga de Archivos ─────────────────────────────────────────────
 st.header("📁 1. Carga de Archivos Base")
 
@@ -781,7 +803,7 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                     bottom=Side(style=c_orig.border.bottom.style, color=c_orig.border.bottom.color) if c_orig.border.bottom else None
                                 )
 
-                # ── PROCESAMIENTO ESTRUCTURADO DEL REPORTE OPERATIVO EN FORMATO LARGO (UNPIVOT/MELT) ──
+                # ── CONSTRUCCIÓN DE DICCIONARIO DE CRUCE RÁPIDO PARA EL REPORTE OPERATIVO ──
                 cols_op_map = {str(c).strip().lower(): c for c in df_operativo.columns}
                 col_id_op = next((orig for k, orig in cols_op_map.items() if 'identificador' in k or 'cedula' in k or 'id' in k), None)
                 col_conc_op = next((orig for k, orig in cols_op_map.items() if 'concepto' in k), None)
@@ -791,33 +813,28 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                 if col_id_op and col_conc_op:
                     df_op_calc = df_operativo.copy()
                     df_op_calc['_id_clean'] = limpiar_id_a_texto(df_op_calc[col_id_op])
-                    df_op_calc['_conc_clean'] = df_op_calc[col_conc_op].astype(str).str.strip().str.lower()
+                    df_op_calc['_conc_norm'] = df_op_calc[col_conc_op].apply(normalizar_concepto_txt)
                     
-                    # Detectar columnas de fecha en df_operativo
-                    date_cols_op = []
+                    # Detectar columnas de fechas en el Reporte Operativo y estandarizarlas a clave corta (ej: "15-feb")
+                    cols_fecha_op_map = {}
                     for c_col in df_op_calc.columns:
-                        if c_col in ('_id_clean', '_conc_clean', col_id_op, col_conc_op):
+                        if c_col in ('_id_clean', '_conc_norm', col_id_op, col_conc_op):
                             continue
-                        try:
-                            f_dt = pd.to_datetime(c_col, errors='coerce')
-                            if pd.notna(f_dt):
-                                date_cols_op.append((c_col, f_dt.normalize()))
-                        except:
-                            pass
+                        f_clave = fecha_a_clave_corta(c_col)
+                        if f_clave:
+                            cols_fecha_op_map[c_col] = f_clave
 
-                    # Recorrer filas del Reporte Operativo y construir el diccionario de búsqueda instantánea: (ID, Concepto_Limpio, Fecha_DT) -> Valor
+                    # Mapear datos operativos a un diccionario (ID_Clean, Concepto_Normalizado, Fecha_Corta) -> Valor
                     for _, row_op in df_op_calc.iterrows():
                         id_op_val = row_op['_id_clean']
-                        conc_op_val = row_op['_conc_clean']
+                        conc_op_norm = row_op['_conc_norm']
                         
-                        for orig_col, dt_col in date_cols_op:
-                            v_fecha = row_op[orig_col]
-                            if pd.notna(v_fecha) and str(v_fecha).strip() not in ("", "nan", "None"):
-                                # Mapear tanto la cadena exacta del concepto como el homólogo
-                                key_cruce = (id_op_val, conc_op_val, dt_col)
-                                dict_operativo_cruce[key_cruce] = v_fecha
+                        for orig_col, f_clave in cols_fecha_op_map.items():
+                            val_op = row_op[orig_col]
+                            if pd.notna(val_op) and str(val_op).strip() not in ("", "nan", "None"):
+                                dict_operativo_cruce[(id_op_val, conc_op_norm, f_clave)] = val_op
 
-                # Estilo de relleno amarillo corporativo para las filas Operativo
+                # Color de resalte amarillo claro corporativo para la fila de Operativo
                 fill_operativo = PatternFill(fill_type="solid", fgColor="FFFF99")
                 font_operativo = Font(name="Arial", size=9, color="000000", bold=True)
 
@@ -848,6 +865,8 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     fila_comp += 1
 
                     # --- FILA 2: OPERATIVO ---
+                    conc_libro3_norm = normalizar_concepto_txt(conc_libro3)
+
                     for col_ht_idx, col_c_idx in mapa_cols_ht_a_comp.items():
                         c_dest = ws_comp.cell(row=fila_comp, column=col_c_idx)
                         c_dest.fill, c_dest.font, c_dest.border = fill_operativo, font_operativo, brd
@@ -865,31 +884,30 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                         elif col_ht_idx == col_concepto_libro3:
                             c_dest.value = conc_libro3
                         elif isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS:
-                            # CRUCE EXACTO Y ROBUSTO POR IDENTIFICADOR + CONCEPTO + FECHA DE LA COLUMNA
+                            # OBTENER FECHA DEL ENCABEZADO Y EXTRAER VALOR OPERATIVO
                             fecha_header_val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value
-                            if fecha_header_val:
-                                try:
-                                    dt_header = pd.Timestamp(fecha_header_val).normalize()
-                                    
-                                    # Intentar coincidencia con el concepto de la planilla (p. ej. "recargo nocturno 0.35%")
-                                    val_op_cruzado = dict_operativo_cruce.get((id_str, conc_libro3.lower(), dt_header))
-                                    
-                                    # Si no encuentra, intentar con el concepto formateado completo
-                                    if val_op_cruzado is None:
-                                        for key_c, val_etiqueta in MAPA_CONCEPTOS.items():
-                                            if val_etiqueta == conc_libro3.lower():
-                                                val_op_cruzado = dict_operativo_cruce.get((id_str, key_c.lower(), dt_header))
-                                                if val_op_cruzado is not None:
-                                                    break
+                            f_clave_header = fecha_a_clave_corta(fecha_header_val)
+                            
+                            val_operativo_encontrado = None
+                            if f_clave_header:
+                                # 1. Buscar coincidencia exacta por ID + Concepto Normalizado + Fecha Corta
+                                val_operativo_encontrado = dict_operativo_cruce.get((id_str, conc_libro3_norm, f_clave_header))
 
-                                    if val_op_cruzado is not None and str(val_op_cruzado).strip() not in ("", "nan", "None"):
-                                        try:
-                                            c_dest.value = round(float(val_op_cruzado), 2)
-                                            c_dest.number_format = '#,##0.00'
-                                        except:
-                                            c_dest.value = str(val_op_cruzado).strip()
+                                # 2. Si no encuentra, intentar con la etiqueta legible de MAPA_CONCEPTOS
+                                if val_operativo_encontrado is None:
+                                    for key_etiqueta, val_mapeado in MAPA_CONCEPTOS.items():
+                                        if val_mapeado.lower() == conc_libro3_norm:
+                                            key_norm = normalizar_concepto_txt(key_etiqueta)
+                                            val_operativo_encontrado = dict_operativo_cruce.get((id_str, key_norm, f_clave_header))
+                                            if val_operativo_encontrado is not None:
+                                                break
+
+                            if val_operativo_encontrado is not None and str(val_operativo_encontrado).strip() not in ("", "nan", "None"):
+                                try:
+                                    c_dest.value = round(float(val_operativo_encontrado), 2)
+                                    c_dest.number_format = '#,##0.00'
                                 except:
-                                    pass
+                                    c_dest.value = str(val_operativo_encontrado).strip()
 
                     fila_comp += 1
 

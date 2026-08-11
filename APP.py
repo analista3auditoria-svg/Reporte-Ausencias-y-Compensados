@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Auditor Trabajo Suplementario",
+    page_title="Auditor-IA Costos Tercerizados TigoUNE",
     page_icon="📋",
     layout="wide"
 )
@@ -130,8 +130,8 @@ st.markdown("""
         <div class="header-brand-content">
             <img src="https://cdn1.totalcommerce.cloud/casalimpia/web_content/assets/logo-casa-limpia.svg" alt="Casalimpia Logo" />
             <div class="title-text">
-                <h1>Auditor Trabajo Sumplementario</h1>
-                <p>Plataforma Auditor TS</p>
+                <h1>Auditor-IA Costos Tercerizados TigoUNE</h1>
+                <p>Plataforma Corporativa para el Cruce de Costos vs. Facturado</p>
             </div>
         </div>
     </div>
@@ -797,6 +797,10 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     mapa_cols_ht_a_comp[col_ht_idx] = col_comp_idx
                     col_comp_idx += 1
 
+                # Mapear e insertar la columna "Observacion" al final de la matriz
+                col_obs_idx = col_comp_idx
+                mapa_cols_ht_a_comp['Observacion'] = col_obs_idx
+
                 # Localizar la columna "Cantidad" en ws_comp para ajustar la fórmula de Diferencia
                 col_cant_ht_idx = col_cantidad_libro3 if col_cantidad_libro3 else 7
                 col_cant_comp_idx = mapa_cols_ht_a_comp.get(col_cant_ht_idx, 8)
@@ -813,6 +817,16 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                             c_dest.alignment = Alignment(horizontal="center", vertical="center")
                             if r_idx == FILA_ENCABEZADO:
                                 c_dest.value = "NOM/Oper"
+                        continue
+
+                    if col_ht_idx == 'Observacion':
+                        for r_idx in range(1, FILA_ENCABEZADO + 1):
+                            c_dest = ws_comp.cell(row=r_idx, column=col_c_idx)
+                            c_dest.font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+                            c_dest.fill = PatternFill(fill_type="solid", fgColor="000000")
+                            c_dest.alignment = Alignment(horizontal="center", vertical="center")
+                            if r_idx == FILA_ENCABEZADO:
+                                c_dest.value = "Observacion"
                         continue
 
                     for r_idx in range(1, FILA_ENCABEZADO + 1):
@@ -885,6 +899,9 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                     conc_libro3_norm = normalizar_concepto_txt(conc_libro3)
 
                     for col_ht_idx, col_c_idx in mapa_cols_ht_a_comp.items():
+                        if col_ht_idx == 'Observacion':
+                            continue
+
                         # Celda Nomina
                         val_orig = ws_htcc.cell(row=fila_excel, column=col_ht_idx).value if col_ht_idx != 'NOM/Oper' else "Nomina"
                         c_nom = ws_comp.cell(row=fila_nom_idx, column=col_c_idx, value=val_orig)
@@ -922,21 +939,19 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                     letra_ini = get_column_letter(col_ini_comp)
                                     letra_fin = get_column_letter(col_fin_comp)
                                     
-                                    # Fórmulas de Suma alineadas estrictamente a sus propias filas en Comparaciones
+                                    # Fórmulas de Suma alineadas a sus propias filas
                                     c_nom.value = f"=SUM({letra_ini}{fila_nom_idx}:{letra_fin}{fila_nom_idx})"
                                     c_nom.number_format = '#,##0.00'
 
                                     c_op.value = f"=SUM({letra_ini}{fila_op_idx}:{letra_fin}{fila_op_idx})"
                                     c_op.number_format = '#,##0.00'
                         elif col_ht_idx == COL_DIF_IDX:
-                            # FÓRMULA DE DIFERENCIA SOLO PARA LA FILA NÓMINA; EN OPERATIVO QUEDA VACÍO
+                            # FÓRMULA DE DIFERENCIA SOLO PARA LA FILA NÓMINA; OPERATIVO VACÍO
                             col_tot_comp_idx = mapa_cols_ht_a_comp.get(COL_TOTAL_IDX)
                             if col_tot_comp_idx:
                                 letra_col_total = get_column_letter(col_tot_comp_idx)
                                 c_nom.value = f"=ROUND({col_cant_comp_letra}{fila_nom_idx}-{letra_col_total}{fila_nom_idx},0)"
                                 c_nom.number_format = '#,##0.00'
-                                
-                                # Fila operativo sin ningún valor ni fórmula
                                 c_op.value = ""
                         elif isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS:
                             fecha_header_val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value
@@ -969,9 +984,10 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                     except:
                                         c_op.value = str(val_operativo_encontrado).strip()
 
-                    # --- 2. SEGUNDO PASO: COMPARAR ÚNICAMENTE COLUMNAS DE FECHA Y APLICAR COLOR ROJO SI HAY DIFERENCIAS ---
+                    # --- 2. SEGUNDO PASO: COMPARAR FECHAS, APLICAR COLOR ROJO Y GENERAR LA OBSERVACIÓN ---
+                    fechas_con_diferencia = []
+
                     for col_ht_idx, col_c_idx in mapa_cols_ht_a_comp.items():
-                        # Excluir Total y Diferencia del resalte rojo automático
                         if isinstance(col_ht_idx, int) and col_ht_idx >= COL_INICIO_FECHAS and col_ht_idx not in (COL_TOTAL_IDX, COL_DIF_IDX):
                             fecha_header_val = ws_htcc.cell(row=FILA_ENCABEZADO, column=col_ht_idx).value
                             dt_header = obtener_dt_fecha(fecha_header_val)
@@ -988,13 +1004,37 @@ if archivo_cargado is not None and archivo_htcc is not None and archivo_operativ
                                 val_n = cell_nom.value
                                 val_o = cell_op.value
 
-                                # Si hay discrepancia entre Nomina y Operativo, pintar ambas celdas en ROJO
+                                # Si hay discrepancia entre Nomina y Operativo
                                 if valores_son_diferentes(val_n, val_o):
                                     cell_nom.fill = fill_rojo_alerta
                                     cell_nom.font = font_rojo_alerta
 
                                     cell_op.fill = fill_rojo_alerta
                                     cell_op.font = font_rojo_alerta
+
+                                    # Registrar el nombre de la fecha con diferencia
+                                    f_corta_txt = fecha_a_clave_corta(fecha_header_val)
+                                    if f_corta_txt and f_corta_txt not in fechas_con_diferencia:
+                                        fechas_con_diferencia.append(f_corta_txt)
+
+                    # --- 3. TERCER PASO: ESCRIBIR EL RESULTADO EN LA COLUMNA 'Observacion' ---
+                    c_obs_nom = ws_comp.cell(row=fila_nom_idx, column=col_obs_idx)
+                    c_obs_op = ws_comp.cell(row=fila_op_idx, column=col_obs_idx)
+
+                    c_obs_nom.border, c_obs_op.border = brd, brd
+                    c_obs_op.fill = fill_operativo
+
+                    if fechas_con_diferencia:
+                        txt_fechas = ", ".join(fechas_con_diferencia)
+                        c_obs_nom.value = f"Diferencia en fecha(s): {txt_fechas}"
+                        c_obs_nom.font = Font(name="Arial", size=9, bold=True, color="C62828") # Texto rojo oscuro elegante
+                        c_obs_nom.alignment = Alignment(horizontal="left", vertical="center")
+                    else:
+                        c_obs_nom.value = "Sin diferencias"
+                        c_obs_nom.font = Font(name="Arial", size=9, bold=False, color="2E7D32") # Texto verde oscuro
+                        c_obs_nom.alignment = Alignment(horizontal="center", vertical="center")
+
+                    ws_comp.column_dimensions[get_column_letter(col_obs_idx)].width = 35
 
                     fila_comp += 2
 

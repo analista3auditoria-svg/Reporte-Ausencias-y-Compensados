@@ -130,8 +130,8 @@ st.markdown("""
         <div class="header-brand-content">
             <img src="https://cdn1.totalcommerce.cloud/casalimpia/web_content/assets/logo-casa-limpia.svg" alt="Casalimpia Logo" />
             <div class="title-text">
-                <h1>Auditor-IA Costos Tercerizados TigoUNE</h1>
-                <p>Plataforma Corporativa para el Cruce de Costos vs. Facturado</p>
+                <h1>Auditor TS</h1>
+                <p>Plataforma Para Auditar TS</p>
             </div>
         </div>
     </div>

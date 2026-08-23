@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Auditor-IA Costos Tercerizados TigoUNE",
+    page_title="Auditor",
     page_icon="📋",
     layout="wide"
 )

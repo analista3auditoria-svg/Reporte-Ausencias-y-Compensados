@@ -181,8 +181,8 @@ PERIODOS = {
     "Mayo":       (pd.Timestamp(2026, 4, 19), pd.Timestamp(2026, 5, 16)),
     "Junio":      (pd.Timestamp(2026, 5, 17), pd.Timestamp(2026, 6, 13)),
     "Julio":      (pd.Timestamp(2026, 6, 14), pd.Timestamp(2026, 7, 11)),
-    "Agosto":     (pd.Timestamp(2026, 7, 12), pd.Timestamp(2026, 8, 8)),
-    "Septiembre": (pd.Timestamp(2026, 8, 9), pd.Timestamp(2026, 9, 19)),
+    "Agosto":     (pd.Timestamp(2026, 7, 12), pd.Timestamp(2026, 8, 15)),
+    "Septiembre": (pd.Timestamp(2026, 8, 16), pd.Timestamp(2026, 9, 19)),
     "Octubre":    (pd.Timestamp(2026, 9, 20), pd.Timestamp(2026, 10, 17)),
     "Noviembre":  (pd.Timestamp(2026, 10, 18), pd.Timestamp(2026, 11, 14)),
     "Diciembre":  (pd.Timestamp(2026, 11, 15), pd.Timestamp(2026, 12, 12))
